@@ -74,6 +74,7 @@ body::before {
 img { max-width: 100%; display: block; }
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
+button:disabled { opacity: 0.38; cursor: default; }
 h1, h2, h3, p { margin: 0; }
 h1 { font-size: 1.7rem; letter-spacing: -0.03em; }
 h2 { font-size: 1.05rem; letter-spacing: -0.02em; }
