@@ -99,6 +99,7 @@ const els = {
 let searchTarget = "settings";
 const popoverSupported = typeof HTMLElement !== "undefined" && "popover" in HTMLElement.prototype;
 let drag = null;
+let lastRenderedBundle = null;
 let keyTimer = 0;
 
 boot();
@@ -364,7 +365,17 @@ function render() {
     els.main.innerHTML = `<section class="panel empty"><h1>Weather unavailable</h1><p>${escapeHtml(state.error || "Something went wrong.")}</p><div class="empty-actions"><button type="button" class="btn" data-action="retry">Try again</button></div></section>`;
     return;
   }
+  // Re-rendering replaces the hourly rail, so carry its scroll position (and focus)
+  // over when it's the same forecast, e.g. after tapping an hour.
+  const sameForecast = state.bundle === lastRenderedBundle;
+  const oldRail = els.main.querySelector(".rail");
+  const railScroll = sameForecast && oldRail ? oldRail.scrollLeft : 0;
+  const railFocused = sameForecast && Boolean(document.activeElement?.closest?.(".rail"));
   els.main.innerHTML = layoutHtml();
+  lastRenderedBundle = state.bundle;
+  const rail = els.main.querySelector(".rail");
+  if (rail && railScroll) rail.scrollLeft = railScroll;
+  if (rail && railFocused) rail.querySelector(".rail-item.is-selected")?.focus({ preventScroll: true });
   if (scrollY) window.scrollTo(0, scrollY);
 }
 
