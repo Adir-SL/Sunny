@@ -1,19 +1,96 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sunny</title>
-    <link rel="icon" type="image/png" href="sunny.png">
-    <link rel="apple-touch-icon" href="sunny.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Sunny shows current conditions, an hourly chart, and a 10-day forecast from Google Weather.">
+  <meta name="theme-color" content="#f3efe6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Sunny">
+  <title>Sunny</title>
+  <link rel="icon" type="image/png" href="sunny.png">
+  <link rel="apple-touch-icon" href="sunny.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/app.css">
+  <script>
+    try {
+      var theme = localStorage.getItem("sunny.theme");
+      if (theme !== "light" && theme !== "dark") {
+        theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.dataset.theme = theme;
+      document.querySelector('meta[name="theme-color"]').setAttribute("content", theme === "dark" ? "#10141a" : "#f3efe6");
+    } catch (error) {}
+  </script>
 </head>
 <body>
-    <!-- LOADING... -->
-    <script>
-        window.location.href = "https://www.google.com/search?q=weather";
-    </script>
+  <a class="skip-link" href="#main">Skip to forecast</a>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <img src="sunny.png" alt="" width="44" height="44">
+        <div>
+          <p class="brand-name">Sunny</p>
+          <p class="brand-tag">Google Weather</p>
+        </div>
+      </div>
+      <form id="search-form" class="search" role="search">
+        <label class="sr-only" for="search">Search for a city</label>
+        <input id="search" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-list" placeholder="Search cities" autocomplete="off" enterkeyhint="search">
+        <ul id="search-list" role="listbox" hidden></ul>
+      </form>
+      <div class="actions">
+        <button type="button" class="btn" id="locate">My location</button>
+        <div class="segmented" role="group" aria-label="Temperature unit">
+          <button type="button" data-unit="c" aria-pressed="true">°C</button>
+          <button type="button" data-unit="f" aria-pressed="false">°F</button>
+        </div>
+        <button type="button" class="btn" id="theme-toggle">Dark</button>
+        <button type="button" class="btn" id="favorites-open">Saved</button>
+        <button type="button" class="btn" id="settings-open">Settings</button>
+        <button type="button" class="btn" id="install" hidden>Install</button>
+      </div>
+    </header>
+    <div id="banners"></div>
+    <main id="main" tabindex="-1">
+      <p class="muted">Loading the forecast…</p>
+    </main>
+    <footer class="footer">
+      <p>Weather, alerts, and place search use Google Maps Platform. Times are shown in the location’s local time.</p>
+      <p class="footer-links">
+        <a href="https://developers.google.com/maps/documentation/weather">Weather API</a>
+        <a href="https://github.com/Adir-SL/Sunny">Source</a>
+      </p>
+    </footer>
+  </div>
+  <p id="live" class="sr-only" aria-live="polite"></p>
+  <noscript><p class="shell">Sunny needs JavaScript to load the forecast.</p></noscript>
+
+  <dialog id="settings-dialog" aria-labelledby="settings-title">
+    <h2 id="settings-title">Settings</h2>
+    <p class="hint">The key stays in this browser only. Leave it blank to keep using sample data. A proxy is optional and keeps the key off this page.</p>
+    <form id="settings-form" class="form">
+      <label for="api-key">Google Maps Platform API key</label>
+      <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste a referrer-restricted key">
+      <label for="proxy-base">Optional proxy URL</label>
+      <input id="proxy-base" type="url" inputmode="url" placeholder="https://your-worker.workers.dev">
+      <label class="check"><input id="force-demo" type="checkbox"> Always use demo data</label>
+      <p id="settings-error" class="form-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-quiet" id="clear-key">Clear key</button>
+        <button type="button" class="btn btn-quiet" id="settings-cancel">Cancel</button>
+        <button type="submit" class="btn">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="favorites-dialog" aria-labelledby="favorites-title">
+    <h2 id="favorites-title">Saved cities</h2>
+    <ul id="favorite-list" class="favorite-list"></ul>
+    <div class="dialog-actions">
+      <button type="button" class="btn" id="favorites-close">Close</button>
+    </div>
+  </dialog>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "Sunny",
+  "short_name": "Sunny",
+  "description": "Current conditions, hourly charts, and a 10-day forecast from Google Weather.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3efe6",
+  "theme_color": "#f3efe6",
+  "icons": [
+    {
+      "src": "sunny.png",
+      "sizes": "272x272",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
