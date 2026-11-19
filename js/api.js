@@ -2,7 +2,8 @@
  * Google Maps Platform calls used by Sunny:
  * - Weather API: current conditions, hourly forecast, daily forecast, public alerts
  * - Places API (New): city autocomplete and place details
- * - Geocoding API: reverse geocode for device location
+ * - Places API (New) Nearby Search: name the device location
+ * - Geocoding API: fallback when Nearby Search finds no locality
  * No other weather provider is called.
  */
 
@@ -211,34 +212,119 @@ export async function lookupPlace(placeId, settings, signal) {
   };
 }
 
-export async function reverseGeocode(lat, lng, settings, signal) {
-  if (settings.demo) {
-    return { name: "Current location", region: "", lat, lng, unnamed: true };
+export const NEARBY_FIELD_MASK = "places.displayName,places.formattedAddress,places.types";
+export const NEARBY_RADII = [5000, 20000];
+
+export function nearbySearchBody(lat, lng, radius) {
+  return {
+    includedTypes: ["locality"],
+    maxResultCount: 1,
+    locationRestriction: {
+      circle: {
+        center: { latitude: lat, longitude: lng },
+        radius,
+      },
+    },
+  };
+}
+
+/** Turn a Places Nearby Search response into a city label, or null. */
+export function placeFromNearby(payload, lat, lng) {
+  const places = Array.isArray(payload?.places) ? payload.places : [];
+  const place = places.find((item) => item?.types?.includes("locality")) || places[0];
+  const name = place?.displayName?.text?.trim();
+  if (!name) return null;
+  const formatted = String(place.formattedAddress || "").trim();
+  let region = "";
+  if (formatted && formatted !== name) {
+    region = formatted.startsWith(`${name},`)
+      ? formatted.slice(name.length + 1).trim()
+      : formatted;
   }
-  const url = endpoint(
-    settings,
-    `${GEO_ORIGIN}/maps/api/geocode/json`,
-    "/geocode/json",
-    { withKey: true },
-  );
-  url.searchParams.set("latlng", `${lat},${lng}`);
-  url.searchParams.set("language", "en");
-  url.searchParams.set("result_type", "locality|postal_town|administrative_area_level_2");
-  const body = await requestJson(url, { signal });
-  const result = body.results?.[0];
-  if (!result) return { name: "Current location", region: "", lat, lng, unnamed: true };
+  return { name, region, lat, lng, unnamed: false };
+}
+
+export function placeFromGeocode(payload, lat, lng) {
+  const result = payload?.results?.[0];
+  if (!result) return null;
   const components = result.address_components || [];
   const locality = components.find((part) => part.types?.includes("locality") || part.types?.includes("postal_town"));
   const admin = components.find((part) => part.types?.includes("administrative_area_level_1"));
   const country = components.find((part) => part.types?.includes("country"));
-  const name = locality?.long_name || admin?.long_name || "Current location";
+  const name = (locality?.long_name || admin?.long_name || "").trim();
+  if (!name) return null;
   return {
     name,
     region: locality ? (country?.long_name || "") : [admin?.long_name, country?.long_name].filter(Boolean).join(", "),
     lat,
     lng,
-    unnamed: name === "Current location",
+    unnamed: false,
   };
+}
+
+/** Try Nearby Search at 5 km, then 20 km, then Geocoding, then coordinates. */
+export async function nameFromLookups(lat, lng, { nearby, geocode }) {
+  for (const radius of NEARBY_RADII) {
+    const found = await nearby(radius);
+    if (found) return found;
+  }
+  const geocoded = await geocode();
+  if (geocoded) return geocoded;
+  return { name: "Current location", region: "", lat, lng, unnamed: true };
+}
+
+export async function reverseGeocode(lat, lng, settings, signal) {
+  if (settings.demo) {
+    return { name: "Current location", region: "", lat, lng, unnamed: true };
+  }
+  return nameFromLookups(lat, lng, {
+    nearby: (radius) => nearbyLocality(lat, lng, radius, settings, signal),
+    geocode: () => geocodeLocality(lat, lng, settings, signal),
+  });
+}
+
+async function nearbyLocality(lat, lng, radius, settings, signal) {
+  try {
+    const url = endpoint(
+      settings,
+      `${PLACES_ORIGIN}/v1/places:searchNearby`,
+      "/places/v1/places:searchNearby",
+    );
+    const headers = {
+      "Content-Type": "application/json",
+      "X-Goog-FieldMask": NEARBY_FIELD_MASK,
+    };
+    if (!settings.proxyBase) headers["X-Goog-Api-Key"] = settings.apiKey;
+    const body = await requestJson(url, {
+      method: "POST",
+      headers,
+      signal,
+      body: JSON.stringify(nearbySearchBody(lat, lng, radius)),
+    });
+    return placeFromNearby(body, lat, lng);
+  } catch (error) {
+    if (error?.name === "AbortError") throw error;
+    return null;
+  }
+}
+
+async function geocodeLocality(lat, lng, settings, signal) {
+  try {
+    const url = endpoint(
+      settings,
+      `${GEO_ORIGIN}/maps/api/geocode/json`,
+      "/geocode/json",
+      { withKey: true },
+    );
+    url.searchParams.set("latlng", `${lat},${lng}`);
+    url.searchParams.set("language", "en");
+    url.searchParams.set("result_type", "locality|postal_town|administrative_area_level_2");
+    const body = await requestJson(url, { signal });
+    return placeFromGeocode(body, lat, lng);
+  } catch (error) {
+    if (error?.name === "AbortError") throw error;
+    return null;
+  }
 }
 
 function delay(ms, signal) {

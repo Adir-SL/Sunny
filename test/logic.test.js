@@ -11,6 +11,13 @@ import {
 } from "../js/format.js";
 import { hasLiveCredential, normalizeProxyBase, resolveSettings } from "../js/settings.js";
 import { renderChart } from "../js/chart.js";
+import {
+  NEARBY_FIELD_MASK,
+  nameFromLookups,
+  nearbySearchBody,
+  placeFromNearby,
+} from "../js/api.js";
+import { routeUpstream } from "../proxy/cloudflare-worker.js";
 
 test("temperatures always include a degree symbol", () => {
   assert.equal(formatTemp(22.4, "c"), "22°");
@@ -74,6 +81,74 @@ test("proxy URL must be https unless it is localhost", () => {
   assert.equal(normalizeProxyBase("https://sunny.example/weather/"), "https://sunny.example/weather");
   assert.equal(normalizeProxyBase("http://localhost:8787"), "http://localhost:8787");
   assert.throws(() => normalizeProxyBase("http://example.com"), /https/);
+});
+
+test("nearby search names Ramat Gan and widens the radius before geocoding", async () => {
+  const body = nearbySearchBody(32.068, 34.824, 5000);
+  assert.deepEqual(body, {
+    includedTypes: ["locality"],
+    maxResultCount: 1,
+    locationRestriction: {
+      circle: { center: { latitude: 32.068, longitude: 34.824 }, radius: 5000 },
+    },
+  });
+  assert.equal(NEARBY_FIELD_MASK, "places.displayName,places.formattedAddress,places.types");
+  const named = placeFromNearby({
+    places: [{
+      displayName: { text: "Ramat Gan" },
+      formattedAddress: "Ramat Gan, Israel",
+      types: ["locality"],
+    }],
+  }, 32.068, 34.824);
+  assert.equal(named.name, "Ramat Gan");
+  assert.equal(named.region, "Israel");
+
+  const radii = [];
+  const firstHit = await nameFromLookups(32.068, 34.824, {
+    nearby: async (radius) => {
+      radii.push(radius);
+      return radius === 5000 ? named : null;
+    },
+    geocode: async () => { throw new Error("geocoding should not run"); },
+  });
+  assert.equal(firstHit.name, "Ramat Gan");
+  assert.deepEqual(radii, [5000]);
+
+  const widened = [];
+  const secondHit = await nameFromLookups(0, 0, {
+    nearby: async (radius) => {
+      widened.push(radius);
+      return radius === 20000 ? { name: "Far town", region: "Elsewhere", lat: 0, lng: 0, unnamed: false } : null;
+    },
+    geocode: async () => null,
+  });
+  assert.equal(secondHit.name, "Far town");
+  assert.deepEqual(widened, [5000, 20000]);
+
+  const fallback = await nameFromLookups(1, 2, {
+    nearby: async () => null,
+    geocode: async () => ({ name: "Geocoded", region: "Country", lat: 1, lng: 2, unnamed: false }),
+  });
+  assert.equal(fallback.name, "Geocoded");
+
+  const coords = await nameFromLookups(1, 2, {
+    nearby: async () => null,
+    geocode: async () => null,
+  });
+  assert.equal(coords.unnamed, true);
+  assert.equal(coords.name, "Current location");
+});
+
+test("the proxy forwards Places Nearby Search", () => {
+  assert.equal(
+    routeUpstream("https://proxy.example/places/v1/places:searchNearby", "POST"),
+    "https://places.googleapis.com/v1/places:searchNearby",
+  );
+  assert.equal(
+    routeUpstream("/geocode/json?latlng=32.068,34.824", "GET"),
+    "https://maps.googleapis.com/maps/api/geocode/json?latlng=32.068,34.824",
+  );
+  assert.equal(routeUpstream("/places/v1/places:searchNearby", "PUT"), null);
 });
 
 test("hourly chart renders three modes", () => {

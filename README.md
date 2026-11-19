@@ -1,10 +1,10 @@
 # Sunny
 
-Sunny is a weather app for the browser. It shows current conditions, an hourly chart, a 10-day forecast, and public alerts from **Google Weather** — the same Maps Platform data behind Google’s weather results. Place search uses Google Places, and device location is labeled with the Geocoding API. No other weather provider is used.
+Sunny is a weather app for the browser. It shows current conditions, an hourly chart, a 10-day forecast, and public alerts from **Google Weather** — the same Maps Platform data behind Google’s weather results. Place search and the device’s city name use Places API (New). No other weather provider is used.
 
 The site is static and is published with GitHub Pages at [https://adir-sl.github.io/Sunny/](https://adir-sl.github.io/Sunny/).
 
-On every visit Sunny asks for this device’s location, reverse-geocodes it with the Google Geocoding API, and shows that city in the header. It uses **Ramat Gan, Israel** only when location access is denied or unavailable, and it says so on the page.
+On every visit Sunny asks for this device’s location and names it with Places API (New) Nearby Search (`places:searchNearby`, type `locality`, 5 km, then 20 km). If that finds nothing, it tries the Geocoding API, then shows the coordinates. It uses **Ramat Gan, Israel** only when location access is denied or unavailable, and it says so on the page.
 
 Live Google Weather is used whenever a key or proxy is configured. The labeled sample forecast appears only when neither is set, with a prompt to add a key. Sample numbers are not live weather.
 
@@ -15,7 +15,7 @@ Live Google Weather is used whenever a key or proxy is configured. The labeled s
 - 10-day forecast with highs and lows
 - Rain warning that lists every hour **today** with more than 30% precipitation chance
 - Sunrise and sunset when the daily forecast includes them
-- Device location on load, city search, and saved cities. The header chip names the city from Google Geocoding.
+- Device location on load, city search, and saved cities. The header chip names the city from Places Nearby Search.
 - °C / °F. Celsius is the default. Every temperature is shown with a ° symbol
 - Light and dark themes
 - Installable PWA, with an offline view of the last forecast saved in this browser
@@ -32,13 +32,13 @@ The key is required for live data. It is **not** stored in this repository.
 3. Enable these APIs:
    - [Weather API](https://console.cloud.google.com/apis/library/weather.googleapis.com)
    - [Places API (New)](https://console.cloud.google.com/apis/library/places.googleapis.com)
-   - [Geocoding API](https://console.cloud.google.com/apis/library/geocoding-backend.googleapis.com)
+   - [Geocoding API](https://console.cloud.google.com/apis/library/geocoding-backend.googleapis.com) (optional fallback if Nearby Search returns no locality)
 4. Create an API key: **APIs & Services → Credentials → Create credentials → API key**.
 5. Edit the key and restrict it:
    - **Application restrictions:** HTTP referrers (websites).
    - Add `https://adir-sl.github.io/*` for GitHub Pages.
    - For local preview, also add `http://localhost:*/*` and `http://127.0.0.1:*/*`.
-   - **API restrictions:** restrict the key to the Weather API, Places API (New), and Geocoding API.
+   - **API restrictions:** restrict the key to the Weather API and Places API (New). Add the Geocoding API only if you want the fallback. A key with Places but not Geocoding is enough to name the city.
 6. Set a quota or budget alert on the project. A referrer-restricted key still spends the project’s quota for anyone who uses the site with that key.
 
 ### Where to put the key
@@ -51,7 +51,7 @@ Do not commit a real key. Sunny reads it in this order:
 
 A configured key or proxy always loads live data. Sample data is not a mode you can leave turned on beside a key.
 
-Direct browser calls work: `weather.googleapis.com`, `places.googleapis.com`, and the Geocoding API respond with CORS headers. The proxy is only there so the key does not have to live in the page.
+Direct browser calls work: `weather.googleapis.com` and `places.googleapis.com` respond with CORS headers. The proxy is only there so the key does not have to live in the page. It forwards `POST /places/v1/places:searchNearby` to Places Nearby Search.
 
 ## Run it locally
 
@@ -95,7 +95,8 @@ Live requests, all metric (the °F view is converted in the browser):
 | Alerts | `GET https://weather.googleapis.com/v1/publicAlerts:lookup` |
 | City search | `POST https://places.googleapis.com/v1/places:autocomplete` |
 | Place location | `GET https://places.googleapis.com/v1/places/{placeId}` |
-| Device location name | `GET https://maps.googleapis.com/maps/api/geocode/json` |
+| Device location name | `POST https://places.googleapis.com/v1/places:searchNearby` |
+| Location name fallback | `GET https://maps.googleapis.com/maps/api/geocode/json` |
 
 ## Deployment
 

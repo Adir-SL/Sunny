@@ -9,10 +9,26 @@
  * https://adir-sl.github.io,http://localhost:8080
  * Then put the worker origin in Sunny settings (or config.public.json).
  * The browser calls this worker; the worker adds the key and forwards:
- *   /v1/...            -> https://weather.googleapis.com/v1/...
- *   /places/v1/...     -> https://places.googleapis.com/v1/...
- *   /geocode/json      -> https://maps.googleapis.com/maps/api/geocode/json
+ *   /v1/...                         -> https://weather.googleapis.com/v1/...
+ *   /places/v1/...                  -> https://places.googleapis.com/v1/...
+ *   POST /places/v1/places:searchNearby
+ *                                   -> Places API (New) Nearby Search
+ *   /geocode/json                   -> https://maps.googleapis.com/maps/api/geocode/json
  */
+
+export function routeUpstream(url, method) {
+  const incoming = new URL(url, "https://proxy.local");
+  if (method === "GET" && incoming.pathname.startsWith("/v1/")) {
+    return `https://weather.googleapis.com${incoming.pathname}${incoming.search}`;
+  }
+  if ((method === "GET" || method === "POST") && incoming.pathname.startsWith("/places/v1/")) {
+    return `https://places.googleapis.com${incoming.pathname.slice("/places".length)}${incoming.search}`;
+  }
+  if (method === "GET" && incoming.pathname === "/geocode/json") {
+    return `https://maps.googleapis.com/maps/api/geocode/json${incoming.search}`;
+  }
+  return null;
+}
 
 export default {
   async fetch(request, env) {
@@ -32,19 +48,13 @@ export default {
     }
 
     const incoming = new URL(request.url);
-    let target = null;
-    if (request.method === "GET" && incoming.pathname.startsWith("/v1/")) {
-      target = new URL(`https://weather.googleapis.com${incoming.pathname}${incoming.search}`);
-      target.searchParams.delete("key");
-      target.searchParams.set("key", env.API_KEY);
-    } else if (incoming.pathname.startsWith("/places/v1/") && (request.method === "GET" || request.method === "POST")) {
-      target = new URL(`https://places.googleapis.com${incoming.pathname.slice("/places".length)}${incoming.search}`);
-    } else if (request.method === "GET" && incoming.pathname === "/geocode/json") {
-      target = new URL(`https://maps.googleapis.com/maps/api/geocode/json${incoming.search}`);
+    const routed = routeUpstream(incoming.pathname + incoming.search, request.method);
+    if (!routed) return json({ error: { message: "Path is not proxied." } }, 404, origin);
+    const target = new URL(routed);
+    if (!incoming.pathname.startsWith("/places/")) {
       target.searchParams.delete("key");
       target.searchParams.set("key", env.API_KEY);
     }
-    if (!target) return json({ error: { message: "Path is not proxied." } }, 404, origin);
 
     const headers = new Headers();
     const mask = request.headers.get("X-Goog-FieldMask");
