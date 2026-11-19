@@ -380,7 +380,6 @@ function layoutHtml() {
   const days = bundle.days?.forecastDays || [];
   const selected = hours[state.selectedHour] || hours[0];
   const rainy = rainyHours(bundle.hours?.forecastHours || [], zone, new Date(), RAIN_THRESHOLD);
-  const dark = state.theme === "dark";
   const condition = current.weatherCondition?.description?.text || "Conditions unavailable";
   const temp = formatTemp(degreesOf(current.temperature), state.unit);
   const feels = formatTemp(degreesOf(current.feelsLikeTemperature), state.unit);
@@ -389,21 +388,20 @@ function layoutHtml() {
   const summary = [
     condition,
     feels === "—" ? "" : `Feels like ${feels}`,
-    high === "—" && low === "—" ? "" : `H ${high} L ${low}`,
   ].filter(Boolean).join(" · ");
 
   const blocks = {
     current: () => `<section class="hero" aria-labelledby="place-name">
-        <p class="eyebrow">${escapeHtml(formatLongDate(new Date(), zone))} · ${escapeHtml(zoneOffsetLabel(new Date(), zone))}</p>
+        ${iconImg(current.weatherCondition, current.isDaytime !== false, "hero-icon", { animated: true })}
+        <p class="eyebrow">${escapeHtml(formatLongDate(new Date(), zone))} <span class="zone">· ${escapeHtml(zoneOffsetLabel(new Date(), zone))}</span></p>
         <h1 id="place-name">${escapeHtml(placeTitle(state.place))}</h1>
         ${state.place.unnamed ? `<p class="region">Your location</p>` : state.place.region ? `<p class="region">${escapeHtml(state.place.region)}</p>` : ""}
         <div class="hero-main">
-          ${iconImg(current.weatherCondition, current.isDaytime !== false, dark, "hero-icon")}
           <div class="hero-readout">
             <p class="temp" aria-label="${escapeHtml(formatTempSpoken(degreesOf(current.temperature), state.unit))}">${temp}</p>
             <p class="summary">${escapeHtml(summary)}</p>
           </div>
-          ${sunHtml(days[0], zone)}
+          ${todayHtml(days[0], zone, high, low)}
         </div>
         <dl class="stats">
           ${stat("Humidity", current.relativeHumidity != null ? `${current.relativeHumidity}%` : "—")}
@@ -423,14 +421,14 @@ function layoutHtml() {
           ${tab("wind", "Wind")}
         </div>
       </div>
-      <div class="rail" role="listbox" aria-label="Next 24 hours" tabindex="0">${hours.map((hour, index) => railItem(hour, index, dark)).join("")}</div>
+      <div class="rail" role="listbox" aria-label="Next 24 hours" tabindex="0">${hours.map((hour, index) => railItem(hour, index)).join("")}</div>
       <div class="chart-wrap" role="tabpanel">${renderChart({ hours, mode: state.chartTab, unit: state.unit, selectedIndex: state.selectedHour })}</div>
       ${selected ? `<p class="hour-detail">${hourDetail(selected)}</p>` : ""}
       ${hoursTable(hours)}
     </section>`,
     daily: () => `<section class="panel daily" aria-labelledby="daily-title">
       <div class="panel-head"><h2 id="daily-title">10-day forecast</h2></div>
-      <ol class="day-list">${days.slice(0, 10).map((day, index) => dayRow(day, index, zone, dark)).join("")}</ol>
+      <ol class="day-list">${days.slice(0, 10).map((day, index) => dayRow(day, index, zone)).join("")}</ol>
     </section>`,
     details: () => detailsHtml(current),
   };
@@ -477,14 +475,23 @@ function sunGlyph(kind) {
   return `<svg class="sun-mini" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><title>${label}</title><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="${path}"/></svg>`;
 }
 
-function sunHtml(day, zone) {
+/** Today's high/low beside sunrise/sunset, as a two-row stack. */
+function todayHtml(day, zone, high, low) {
   const sun = day?.sunEvents;
-  if (!sun?.sunriseTime && !sun?.sunsetTime) return "";
-  const rise = sun.sunriseTime ? formatClock(new Date(sun.sunriseTime), zone) : "—";
-  const set = sun.sunsetTime ? formatClock(new Date(sun.sunsetTime), zone) : "—";
-  return `<div class="sun-stack">
-    <p>${sunGlyph("rise")}<strong>${escapeHtml(rise)}</strong><span class="sr-only">sunrise</span></p>
-    <p>${sunGlyph("set")}<strong>${escapeHtml(set)}</strong><span class="sr-only">sunset</span></p>
+  const hasTemps = high !== "—" || low !== "—";
+  const hasSun = Boolean(sun?.sunriseTime || sun?.sunsetTime);
+  if (!hasTemps && !hasSun) return "";
+  const rise = sun?.sunriseTime ? formatClock(new Date(sun.sunriseTime), zone) : "—";
+  const set = sun?.sunsetTime ? formatClock(new Date(sun.sunsetTime), zone) : "—";
+  const temp = (label, spoken, value) => hasTemps
+    ? `<p class="hl"><span class="hl-label" aria-hidden="true">${label}</span><span class="sr-only">${spoken}</span><strong>${escapeHtml(value)}</strong></p>`
+    : "";
+  const sunLine = (kind, value) => hasSun
+    ? `<p>${sunGlyph(kind)}<strong>${escapeHtml(value)}</strong><span class="sr-only">${kind === "rise" ? "sunrise" : "sunset"}</span></p>`
+    : "";
+  return `<div class="sun-stack${hasTemps && hasSun ? " is-paired" : ""}">
+    ${temp("H", "high", high)}${sunLine("rise", rise)}
+    ${temp("L", "low", low)}${sunLine("set", set)}
   </div>`;
 }
 
@@ -545,12 +552,12 @@ function detailsHtml(current) {
   return `<section class="panel details"><h2>Details</h2><dl>${rows.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl><p class="source">Conditions and forecast from Google Weather.</p></section>`;
 }
 
-function railItem(hour, index, dark) {
+function railItem(hour, index) {
   const selected = index === state.selectedHour;
   const pop = precipPercent(hour.precipitation);
   return `<button type="button" class="rail-item${selected ? " is-selected" : ""}" data-hour="${index}" role="option" aria-selected="${selected ? "true" : "false"}">
     <span>${escapeHtml(formatHourLabel(hour))}</span>
-    ${iconImg(hour.weatherCondition, hour.isDaytime !== false, dark, "rail-icon")}
+    ${iconImg(hour.weatherCondition, hour.isDaytime !== false, "rail-icon")}
     <strong>${formatTemp(degreesOf(hour.temperature), state.unit)}</strong>
     <span class="rail-pop">${pop == null ? "" : `${pop}%`}</span>
   </button>`;
@@ -582,7 +589,7 @@ function hoursTable(hours) {
   return `<div class="sr-only"><table><caption>Next 24 hours</caption><thead><tr><th>Time</th><th>Condition</th><th>Temperature</th><th>Precipitation probability</th><th>Wind</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
-function dayRow(day, index, zone, dark) {
+function dayRow(day, index, zone) {
   const date = day.displayDate || {};
   const key = date.year ? dateKey(date.year, date.month, date.day) : "";
   const today = dateKeyInZone(new Date(), zone);
@@ -598,15 +605,16 @@ function dayRow(day, index, zone, dark) {
   const low = formatTemp(degreesOf(day.minTemperature), state.unit);
   return `<li class="day-row">
     <span class="day-name">${escapeHtml(label)}</span>
-    ${iconImg(part.weatherCondition, true, dark, "day-icon")}
+    ${iconImg(part.weatherCondition, true, "day-icon")}
     <span class="day-pop">${pop}%</span>
     <span class="day-temps"><strong>${high}</strong><span>${low}</span></span>
   </li>`;
 }
 
-function iconImg(condition, isDaytime, dark, className) {
-  const url = iconUrl(condition, { isDaytime, dark });
-  return `<img class="${className}" src="${escapeHtml(url)}" alt="" width="48" height="48" data-fallback="${escapeHtml(condition?.type || "")}" data-daytime="${isDaytime ? "1" : "0"}">`;
+function iconImg(condition, isDaytime, className, { animated = false } = {}) {
+  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const url = iconUrl(condition, { isDaytime, animated: animated && !reduceMotion });
+  return `<img class="${className}" src="${escapeHtml(url)}" alt="" width="64" height="64" decoding="async" data-fallback="${escapeHtml(condition?.type || "")}">`;
 }
 
 function skeletonHtml() {
@@ -656,11 +664,6 @@ function onMainKeydown(event) {
 function onIconError(event) {
   const img = event.target;
   if (!(img instanceof HTMLImageElement)) return;
-  if (img.src.includes("_dark") && !img.dataset.triedLight) {
-    img.dataset.triedLight = "1";
-    img.src = img.src.replace("_dark.svg", ".svg");
-    return;
-  }
   img.outerHTML = fallbackIconSvg(img.dataset.fallback || "");
 }
 

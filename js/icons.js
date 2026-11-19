@@ -1,61 +1,65 @@
-/** Google Weather icon URLs, with a small offline SVG fallback. */
+/**
+ * Meteocons weather icons (fill style, MIT, by Bas Milius — https://meteocons.com),
+ * self-hosted under icons/meteocons. "@" is replaced with "day" or "night".
+ * The hero uses the animated set; lists use the static set.
+ */
 
 const ICON_BY_TYPE = {
-  CLEAR: "sunny",
-  MOSTLY_CLEAR: "mostly_sunny",
-  PARTLY_CLOUDY: "partly_cloudy",
-  MOSTLY_CLOUDY: "mostly_cloudy",
-  CLOUDY: "cloudy",
-  WINDY: "cloudy",
-  WIND_AND_RAIN: "showers",
-  LIGHT_RAIN_SHOWERS: "drizzle",
-  CHANCE_OF_SHOWERS: "scattered_showers",
-  SCATTERED_SHOWERS: "scattered_showers",
-  RAIN_SHOWERS: "showers",
-  HEAVY_RAIN_SHOWERS: "showers",
-  LIGHT_TO_MODERATE_RAIN: "drizzle",
-  MODERATE_TO_HEAVY_RAIN: "showers",
-  RAIN: "showers",
+  CLEAR: "clear-@",
+  MOSTLY_CLEAR: "mostly-clear-@",
+  PARTLY_CLOUDY: "partly-cloudy-@",
+  MOSTLY_CLOUDY: "overcast-@",
+  CLOUDY: "overcast",
+  WINDY: "wind",
+  WIND_AND_RAIN: "rain",
+  LIGHT_RAIN_SHOWERS: "partly-cloudy-@-drizzle",
+  CHANCE_OF_SHOWERS: "partly-cloudy-@-rain",
+  SCATTERED_SHOWERS: "partly-cloudy-@-rain",
+  RAIN_SHOWERS: "overcast-@-rain",
+  HEAVY_RAIN_SHOWERS: "extreme-@-rain",
+  LIGHT_TO_MODERATE_RAIN: "rain",
+  MODERATE_TO_HEAVY_RAIN: "extreme-rain",
+  RAIN: "rain",
   LIGHT_RAIN: "drizzle",
-  HEAVY_RAIN: "showers",
-  RAIN_PERIODICALLY_HEAVY: "showers",
-  LIGHT_SNOW_SHOWERS: "flurries",
-  CHANCE_OF_SNOW_SHOWERS: "flurries",
-  SCATTERED_SNOW_SHOWERS: "snow_showers",
-  SNOW_SHOWERS: "snow_showers",
-  HEAVY_SNOW_SHOWERS: "heavy_snow",
-  LIGHT_TO_MODERATE_SNOW: "snow_showers",
-  MODERATE_TO_HEAVY_SNOW: "heavy_snow",
-  SNOW: "snow_showers",
-  LIGHT_SNOW: "flurries",
-  HEAVY_SNOW: "heavy_snow",
-  SNOWSTORM: "blowing_snow",
-  SNOW_PERIODICALLY_HEAVY: "heavy_snow",
-  HEAVY_SNOW_STORM: "blowing_snow",
-  BLOWING_SNOW: "blowing_snow",
-  RAIN_AND_SNOW: "wintry_mix",
-  HAIL: "wintry_mix",
-  HAIL_SHOWERS: "wintry_mix",
-  THUNDERSTORM: "isolated_tstorms",
-  THUNDERSHOWER: "isolated_tstorms",
-  LIGHT_THUNDERSTORM_RAIN: "isolated_tstorms",
-  SCATTERED_THUNDERSTORMS: "isolated_tstorms",
-  HEAVY_THUNDERSTORM: "strong_tstorms",
+  HEAVY_RAIN: "extreme-rain",
+  RAIN_PERIODICALLY_HEAVY: "extreme-rain",
+  LIGHT_SNOW_SHOWERS: "partly-cloudy-@-snow",
+  CHANCE_OF_SNOW_SHOWERS: "partly-cloudy-@-snow",
+  SCATTERED_SNOW_SHOWERS: "partly-cloudy-@-snow",
+  SNOW_SHOWERS: "overcast-@-snow",
+  HEAVY_SNOW_SHOWERS: "extreme-snow",
+  LIGHT_TO_MODERATE_SNOW: "snow",
+  MODERATE_TO_HEAVY_SNOW: "extreme-snow",
+  SNOW: "snow",
+  LIGHT_SNOW: "snow",
+  HEAVY_SNOW: "extreme-snow",
+  SNOWSTORM: "extreme-snow",
+  SNOW_PERIODICALLY_HEAVY: "extreme-snow",
+  HEAVY_SNOW_STORM: "extreme-snow",
+  BLOWING_SNOW: "wind-snow",
+  RAIN_AND_SNOW: "sleet",
+  HAIL: "hail",
+  HAIL_SHOWERS: "partly-cloudy-@-hail",
+  THUNDERSTORM: "thunderstorms-rain",
+  THUNDERSHOWER: "thunderstorms-@-rain",
+  LIGHT_THUNDERSTORM_RAIN: "thunderstorms-@-rain",
+  SCATTERED_THUNDERSTORMS: "thunderstorms-@",
+  HEAVY_THUNDERSTORM: "thunderstorms-extreme-rain",
 };
 
+export const ICON_NAMES = [...new Set(
+  Object.values(ICON_BY_TYPE).flatMap((name) => name.includes("@")
+    ? [name.replace("@", "day"), name.replace("@", "night")]
+    : [name]),
+)];
+
 export function iconSlug(condition, isDaytime = true) {
-  const type = condition?.type || "";
-  if (!isDaytime && (type === "CLEAR" || type === "MOSTLY_CLEAR")) {
-    return type === "CLEAR" ? "clear" : "mostly_clear";
-  }
-  return ICON_BY_TYPE[type] || "partly_cloudy";
+  const pattern = ICON_BY_TYPE[condition?.type || ""] || "partly-cloudy-@";
+  return pattern.replace("@", isDaytime ? "day" : "night");
 }
 
-export function iconUrl(condition, { isDaytime = true, dark = false } = {}) {
-  const base = condition?.iconBaseUri;
-  if (base) return `${dark ? `${base}_dark` : base}.svg`;
-  const slug = iconSlug(condition, isDaytime);
-  return `https://maps.gstatic.com/weather/v1/${slug}${dark ? "_dark" : ""}.svg`;
+export function iconUrl(condition, { isDaytime = true, animated = false } = {}) {
+  return `icons/meteocons/${animated ? "animated" : "static"}/${iconSlug(condition, isDaytime)}.svg`;
 }
 
 export function fallbackIconSvg(type = "") {

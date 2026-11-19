@@ -10,7 +10,7 @@ Live Google Weather is used whenever a key or proxy is configured. The labeled s
 
 ## What you can do
 
-- Current temperature, feels-like, condition icon, humidity, wind, UV, and precipitation chance
+- Current temperature, feels-like, condition icon ([Meteocons](https://meteocons.com) by Bas Milius, MIT, self-hosted in `icons/meteocons`), humidity, wind, UV, and precipitation chance
 - Hourly chart with Temperature, Precipitation, and Wind tabs, plus the next 24 hours
 - 10-day forecast with highs and lows
 - Rain warning that lists every hour **today** with more than 30% precipitation chance
@@ -80,6 +80,7 @@ That runs the unit tests for units, the rain-hour rule, settings, and the demo p
 ├── sw.js                   # Offline cache of the app shell
 ├── manifest.webmanifest    # Installable PWA
 ├── sunny.png               # Icon
+├── icons/meteocons/        # Weather icons (animated + static, MIT)
 ├── config.example.json     # Template for a local key
 ├── config.public.json      # Optional public proxy URL only
 ├── proxy/cloudflare-worker.js
