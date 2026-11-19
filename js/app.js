@@ -89,7 +89,15 @@ const els = {
   locationChip: document.querySelector("#location-chip"),
   installButton: document.querySelector("#install"),
   savePlace: document.querySelector("#save-place"),
+  places: document.querySelector("#places"),
+  placesTabs: document.querySelector("#places-tabs"),
+  placesSearch: document.querySelector("#places-search"),
+  placesInput: document.querySelector("#places-input"),
+  placesList: document.querySelector("#places-list"),
 };
+/** Which search box the shared search logic drives: the settings sheet or the places popover. */
+let searchTarget = "settings";
+const popoverSupported = typeof HTMLElement !== "undefined" && "popover" in HTMLElement.prototype;
 let drag = null;
 let keyTimer = 0;
 
@@ -160,8 +168,11 @@ function bind() {
   });
   els.search.addEventListener("input", onSearchInput);
   els.search.addEventListener("keydown", onSearchKeydown);
+  els.search.addEventListener("focus", () => { searchTarget = "settings"; });
+  bindPlaces();
   document.querySelector("#search-form").addEventListener("submit", (event) => {
     event.preventDefault();
+    searchTarget = "settings";
     chooseSearch(state.searchActive >= 0 ? state.searchActive : 0);
   });
   document.addEventListener("click", (event) => {
@@ -267,6 +278,12 @@ function selectPlace(place, source = "search") {
   state.selectedHour = 0;
   closeSearch();
   if (els.search) els.search.value = "";
+  if (els.placesInput) els.placesInput.value = "";
+  if (source === "search" && !state.place.unnamed && !isFavorite(state.place)) {
+    state.favorites.push({ ...state.place });
+    saveFavorites();
+    renderFavorites();
+  }
   writePlace();
   renderLocationChip();
   syncSaveButton();
@@ -674,7 +691,7 @@ function toggleFavorite() {
     state.favorites = [{ ...state.place }, ...state.favorites].slice(0, 16);
     announce(`${state.place.name} saved.`);
   }
-  localStorage.setItem("sunny.favorites", JSON.stringify(state.favorites));
+  saveFavorites();
   renderFavorites();
   syncSaveButton();
   render();
@@ -791,15 +808,22 @@ function onFavoriteClick(event) {
   }
   if (remove) {
     state.favorites.splice(Number(remove.dataset.favRemove), 1);
-    localStorage.setItem("sunny.favorites", JSON.stringify(state.favorites));
+    saveFavorites();
     renderFavorites();
+    renderPlaces();
     render();
   }
 }
 
+function sx() {
+  return searchTarget === "places"
+    ? { input: els.placesInput, list: els.placesList }
+    : { input: els.search, list: els.searchList };
+}
+
 function onSearchInput() {
   window.clearTimeout(state.searchTimer);
-  const query = els.search.value;
+  const query = sx().input.value;
   state.searchTimer = window.setTimeout(() => runSearch(query), 250);
 }
 
@@ -818,26 +842,26 @@ async function runSearch(query) {
   } catch (error) {
     if (seq !== state.searchSeq) return;
     state.searchResults = [];
-    els.searchList.hidden = false;
-    els.search.setAttribute("aria-expanded", "true");
-    els.searchList.innerHTML = `<li class="muted" role="presentation">${escapeHtml(error.message || "Search failed.")}</li>`;
+    sx().list.hidden = false;
+    sx().input.setAttribute("aria-expanded", "true");
+    sx().list.innerHTML = `<li class="muted" role="presentation">${escapeHtml(error.message || "Search failed.")}</li>`;
   }
 }
 
 function renderSearch() {
   if (!state.searchResults.length) {
-    els.searchList.hidden = false;
-    els.search.setAttribute("aria-expanded", "true");
-    els.searchList.innerHTML = `<li class="muted" role="presentation">${state.demo ? "No matching sample cities." : "No matching cities."}</li>`;
+    sx().list.hidden = false;
+    sx().input.setAttribute("aria-expanded", "true");
+    sx().list.innerHTML = `<li class="muted" role="presentation">${state.demo ? "No matching sample cities." : "No matching cities."}</li>`;
     return;
   }
-  els.searchList.hidden = false;
-  els.search.setAttribute("aria-expanded", "true");
-  els.searchList.innerHTML = state.searchResults.map((place, index) => `<li role="option" id="search-opt-${index}" aria-selected="${index === state.searchActive ? "true" : "false"}">
+  sx().list.hidden = false;
+  sx().input.setAttribute("aria-expanded", "true");
+  sx().list.innerHTML = state.searchResults.map((place, index) => `<li role="option" id="${searchTarget}-opt-${index}" aria-selected="${index === state.searchActive ? "true" : "false"}">
     <button type="button" data-result="${index}"><span>${escapeHtml(place.name)}</span><span class="muted">${escapeHtml(place.region || "")}</span></button>
   </li>`).join("") + (state.demo ? `<li class="search-note" role="presentation">Sample cities in demo mode</li>` : `<li class="search-note" role="presentation">Search by Google</li>`);
-  const active = state.searchActive >= 0 ? `search-opt-${state.searchActive}` : "";
-  if (active) els.search.setAttribute("aria-activedescendant", active);
+  const active = state.searchActive >= 0 ? `${searchTarget}-opt-${state.searchActive}` : "";
+  if (active) sx().input.setAttribute("aria-activedescendant", active);
 }
 
 function onSearchKeydown(event) {
@@ -859,11 +883,11 @@ async function chooseSearch(index) {
   const result = state.searchResults[index];
   if (!result) return;
   closeSearch();
-  els.search.value = result.name;
+  sx().input.value = result.name;
   if (result.placeId && !state.demo) {
     try {
       const place = await lookupPlace(result.placeId, requestSettings(), new AbortController().signal);
-      els.settings.close();
+      closePanels();
       selectPlace(place);
       return;
     } catch (error) {
@@ -873,7 +897,7 @@ async function chooseSearch(index) {
     }
   }
   if (Number.isFinite(result.lat) && Number.isFinite(result.lng)) {
-    els.settings.close();
+    closePanels();
     selectPlace(result);
   }
 }
@@ -881,10 +905,10 @@ async function chooseSearch(index) {
 function closeSearch() {
   state.searchResults = [];
   state.searchActive = -1;
-  els.searchList.hidden = true;
-  els.searchList.innerHTML = "";
-  els.search.setAttribute("aria-expanded", "false");
-  els.search.removeAttribute("aria-activedescendant");
+  sx().list.hidden = true;
+  sx().list.innerHTML = "";
+  sx().input.setAttribute("aria-expanded", "false");
+  sx().input.removeAttribute("aria-activedescendant");
 }
 
 async function install() {
@@ -1058,6 +1082,7 @@ function placeTitle(place) {
 
 function renderLocationChip() {
   if (!els.locationChip) return;
+  if (isPlacesOpen() && !els.placesTabs.hidden) renderPlaces();
   let kicker = "Your location";
   let name = "";
   if (state.locationSource === "fallback") {
@@ -1072,8 +1097,180 @@ function renderLocationChip() {
   const busy = !name || state.loading || state.updating;
   const busyText = name ? "Updating forecast" : "Finding your location";
   const spinner = busy ? `<span class="spinner" aria-hidden="true"></span><span class="sr-only">${busyText}…</span>` : "";
-  const label = name ? `<span class="location-name">${escapeHtml(name)}</span>` : "";
+  const label = name ? `<span class="location-name">${escapeHtml(name)}</span>${CHEVRON}` : "";
   els.locationChip.innerHTML = `<span class="location-kicker">${escapeHtml(kicker)}</span><span class="location-row">${label}${spinner}</span>`;
+}
+
+const CHEVRON = `<svg class="chip-chevron" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const PIN = `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M13.6 2.4 2.6 7l4.6 1.8 1.8 4.6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+const CLOSE = `<svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`;
+
+function saveFavorites() {
+  localStorage.setItem("sunny.favorites", JSON.stringify(state.favorites));
+}
+
+function bindPlaces() {
+  if (!els.places) return;
+  if (popoverSupported) {
+    // Native toggling avoids the light-dismiss-then-reopen race when tapping the chip again.
+    els.locationChip.setAttribute("popovertarget", "places");
+    els.places.addEventListener("beforetoggle", (event) => {
+      if (event.newState === "open") showPlacesTabs({ focus: false });
+    });
+    els.places.addEventListener("toggle", (event) => {
+      els.locationChip.setAttribute("aria-expanded", event.newState === "open" ? "true" : "false");
+      if (event.newState === "open") els.placesTabs.querySelector('[aria-current="true"]')?.focus();
+      else onPlacesClosed();
+    });
+  } else {
+    els.locationChip.addEventListener("click", () => (isPlacesOpen() ? closePlaces() : openPlaces()));
+  }
+  els.placesTabs.addEventListener("click", onPlacesTabClick);
+  els.placesInput.addEventListener("input", () => { searchTarget = "places"; onSearchInput(); });
+  els.placesInput.addEventListener("keydown", (event) => {
+    searchTarget = "places";
+    if (event.key === "Escape" && !state.searchResults.length) {
+      event.preventDefault();
+      showPlacesTabs();
+      return;
+    }
+    onSearchKeydown(event);
+  });
+  els.placesSearch.addEventListener("submit", (event) => {
+    event.preventDefault();
+    searchTarget = "places";
+    chooseSearch(state.searchActive >= 0 ? state.searchActive : 0);
+  });
+  els.placesList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-result]");
+    if (!button) return;
+    searchTarget = "places";
+    chooseSearch(Number(button.dataset.result));
+  });
+  document.querySelector("#places-cancel").addEventListener("click", showPlacesTabs);
+  if (!popoverSupported) {
+    document.addEventListener("click", (event) => {
+      if (isPlacesOpen() && !event.target.closest("#places, #location-chip")) closePlaces();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && isPlacesOpen()) closePlaces();
+    });
+  }
+}
+
+function isPlacesOpen() {
+  if (!els.places) return false;
+  return popoverSupported ? els.places.matches(":popover-open") : els.places.classList.contains("is-open");
+}
+
+/** Fallback for browsers without the Popover API. */
+function openPlaces() {
+  showPlacesTabs({ focus: false });
+  els.places.classList.add("is-open");
+  els.locationChip.setAttribute("aria-expanded", "true");
+  els.placesTabs.querySelector('[aria-current="true"]')?.focus();
+}
+
+function closePlaces() {
+  if (!isPlacesOpen()) return;
+  if (popoverSupported) els.places.hidePopover();
+  else {
+    els.places.classList.remove("is-open");
+    onPlacesClosed();
+  }
+}
+
+function onPlacesClosed() {
+  els.locationChip.setAttribute("aria-expanded", "false");
+  if (searchTarget === "places") closeSearch();
+  searchTarget = "settings";
+}
+
+/** Close whichever place picker is open (settings sheet or places popover). */
+function closePanels() {
+  if (els.settings.open) els.settings.close();
+  closePlaces();
+}
+
+function showPlacesTabs({ focus = true } = {}) {
+  if (searchTarget === "places") closeSearch();
+  els.placesInput.value = "";
+  els.placesSearch.hidden = true;
+  els.placesTabs.hidden = false;
+  renderPlaces();
+  if (focus) els.placesTabs.querySelector("[data-place-new]")?.focus();
+}
+
+function showPlacesSearch() {
+  searchTarget = "places";
+  els.placesTabs.hidden = true;
+  els.placesSearch.hidden = false;
+  els.placesInput.value = "";
+  els.placesInput.focus();
+}
+
+function activePlaceIndex() {
+  if (state.locationSource !== "search") return -1;
+  const key = placeKey(state.place);
+  return state.favorites.findIndex((place) => placeKey(place) === key);
+}
+
+function renderPlaces() {
+  if (!els.placesTabs) return;
+  const active = activePlaceIndex();
+  const hereActive = state.locationSource !== "search";
+  const tabs = state.favorites.map((place, index) => {
+    const current = index === active;
+    const name = escapeHtml(place.name || "Saved city");
+    return `<li class="place-tab${current ? " is-active" : ""}">
+      <button type="button" class="place-open" data-place-open="${index}" aria-current="${current ? "true" : "false"}">${name}</button>
+      <button type="button" class="place-close" data-place-close="${index}" aria-label="Close ${name}">${CLOSE}</button>
+    </li>`;
+  }).join("");
+  els.placesTabs.innerHTML = `<li class="place-tab place-here${hereActive ? " is-active" : ""}">
+      <button type="button" class="place-open" data-place-here aria-current="${hereActive ? "true" : "false"}">${PIN}Your location</button>
+    </li>${tabs}<li class="place-tab place-new">
+      <button type="button" class="place-open" data-place-new><span aria-hidden="true">+</span> New</button>
+    </li>`;
+}
+
+function onPlacesTabClick(event) {
+  if (event.target.closest("[data-place-new]")) {
+    showPlacesSearch();
+    return;
+  }
+  if (event.target.closest("[data-place-here]")) {
+    closePlaces();
+    if (state.locationSource === "search") locate();
+    return;
+  }
+  const open = event.target.closest("[data-place-open]");
+  if (open) {
+    const index = Number(open.dataset.placeOpen);
+    const place = state.favorites[index];
+    closePlaces();
+    if (place && index !== activePlaceIndex()) selectPlace(place);
+    return;
+  }
+  const close = event.target.closest("[data-place-close]");
+  if (close) {
+    const index = Number(close.dataset.placeClose);
+    const wasActive = index === activePlaceIndex();
+    state.favorites.splice(index, 1);
+    saveFavorites();
+    renderFavorites();
+    syncSaveButton();
+    if (wasActive) {
+      // Fall back to the tab on the left, like closing a browser tab.
+      const left = state.favorites[index - 1];
+      if (left) selectPlace(left);
+      else locate();
+    }
+    renderPlaces();
+    const next = els.placesTabs.querySelectorAll("[data-place-close]")[Math.max(0, index - 1)]
+      || els.placesTabs.querySelector("[data-place-new]");
+    next?.focus();
+  }
 }
 
 function loadFavorites() {

@@ -15,7 +15,7 @@ Live Google Weather is used whenever a key or proxy is configured. The labeled s
 - 10-day forecast with highs and lows
 - Rain warning that lists every hour **today** with more than 30% precipitation chance
 - Sunrise and sunset when the daily forecast includes them
-- Device location on load, city search, and saved cities. The header chip names the city from Places Nearby Search.
+- Device location on load, city search, and saved cities. Tap the location in the header for place tabs: **Your location** first, one tab per saved city (with × to close), and **+ New** to search for another city. Tabs save automatically. The header chip names the city from Places Nearby Search.
 - One settings control for search, units, theme (system, light, or dark), the API key, and the order of the weather cards. Those choices are saved in this browser.
 - °C / °F. Celsius is the default. Every temperature is shown with a ° symbol
 - Light and dark themes

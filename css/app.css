@@ -218,6 +218,24 @@ a { color: var(--teal); }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+button.location-chip {
+  width: 100%;
+  min-height: 48px;
+  padding: 4px 8px;
+  border-radius: 14px;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease;
+}
+button.location-chip:active,
+button.location-chip[aria-expanded="true"] { background: var(--surface); }
+.chip-chevron {
+  flex: 0 0 auto;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+}
+.location-chip[aria-expanded="true"] .chip-chevron { transform: rotate(180deg); }
 .location-row {
   display: flex;
   align-items: center;
@@ -298,6 +316,98 @@ a { color: var(--teal); }
 .segmented button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
 .tab[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 
+/* Places popover: tabs for "Your location", saved cities, and "+ New". */
+.places {
+  position: fixed;
+  inset: calc(env(safe-area-inset-top) + 66px) 12px auto 12px;
+  width: auto;
+  max-width: 480px;
+  max-height: calc(100dvh - 90px);
+  margin: 0 auto;
+  padding: 14px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18);
+  z-index: 30;
+}
+.places:popover-open, .places.is-open { animation: pop-in 0.16s ease-out; }
+.places::backdrop { background: rgba(0, 0, 0, 0.14); }
+@supports not selector(:popover-open) {
+  .places { display: none; }
+  .places.is-open { display: block; }
+}
+@keyframes pop-in { from { opacity: 0; transform: translateY(-6px); } }
+.places-tabs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.place-tab {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+}
+.place-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-weight: var(--w-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.place-tab:has(.place-close) .place-open { padding-right: 4px; }
+.place-close {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-right: 5px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+}
+.place-close:hover, .place-close:active { background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.place-tab.is-active { background: var(--ink); border-color: var(--ink); }
+.place-tab.is-active .place-open,
+.place-tab.is-active .place-close { color: var(--bg); }
+.place-tab.is-active .place-close:hover,
+.place-tab.is-active .place-close:active { background: color-mix(in srgb, var(--bg) 18%, transparent); }
+.place-here svg { color: var(--accent); flex: 0 0 auto; }
+.place-tab.is-active.place-here svg { color: var(--bg); }
+.place-new { border-style: dashed; background: transparent; }
+.place-new .place-open { color: var(--accent); }
+.places-search-bar { display: flex; gap: 8px; align-items: center; }
+.places-search-bar input { flex: 1; min-width: 0; }
+.places .search input { background: var(--bg); }
+.places .search-list {
+  position: static;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  max-height: none;
+}
 .banners { display: grid; gap: 8px; margin: 8px 0 14px; }
 .banner {
   font-weight: var(--w-regular);
@@ -529,6 +639,7 @@ dialog::backdrop { background: rgba(16, 20, 26, 0.48); }
   html { scroll-behavior: auto; }
   .skeleton { animation: none; }
   .spinner { animation-duration: 2.4s; }
+  .places:popover-open, .places.is-open { animation: none; }
 }
 
 @media (max-width: 380px) {

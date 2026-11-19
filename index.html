@@ -47,16 +47,27 @@
         <img class="brand-mark brand-theme brand-theme-light" src="sunny.png" alt="" width="32" height="32">
         <img class="brand-mark brand-theme brand-theme-dark" src="sunny-dark.png" alt="" width="32" height="32">
       </span>
-      <p id="location-chip" class="location-chip">
+      <button type="button" id="location-chip" class="location-chip" aria-haspopup="dialog" aria-expanded="false" aria-controls="places">
         <span class="location-kicker">Your location</span>
         <span class="location-row"><span class="spinner" aria-hidden="true"></span><span class="sr-only">Finding your location…</span></span>
-      </p>
+      </button>
       <button type="button" class="gear" id="settings-open" aria-label="Settings" aria-haspopup="dialog">
         <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
           <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.49.49 0 0 0 .12-.63l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.2 7.2 0 0 0-1.63-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.57-1.63.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87a.48.48 0 0 0 .12.63l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.49.49 0 0 0-.12.63l1.92 3.32c.12.22.37.31.59.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.05.24.26.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.63l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/>
         </svg>
       </button>
     </header>
+    <div id="places" class="places" popover role="dialog" aria-label="Places">
+      <ul id="places-tabs" class="places-tabs"></ul>
+      <form id="places-search" class="search places-search" role="search" hidden>
+        <div class="places-search-bar">
+          <label class="sr-only" for="places-input">Search for a city</label>
+          <input id="places-input" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="places-list" placeholder="Search a city" autocomplete="off" enterkeyhint="search">
+          <button type="button" class="btn btn-quiet" id="places-cancel">Cancel</button>
+        </div>
+        <ul id="places-list" class="search-list" role="listbox" hidden></ul>
+      </form>
+    </div>
     <div id="banners"></div>
     <main id="main" tabindex="-1">
       <p class="muted">Loading the forecast…</p>
