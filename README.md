@@ -4,7 +4,9 @@ Sunny is a weather app for the browser. It shows current conditions, an hourly c
 
 The site is static and is published with GitHub Pages at [https://adir-sl.github.io/Sunny/](https://adir-sl.github.io/Sunny/).
 
-Until you add an API key, Sunny opens in **demo mode**: a clearly labeled sample forecast for Ramat Gan so the layout can be previewed. Demo numbers are not live weather.
+On every visit Sunny asks for this device’s location, reverse-geocodes it with the Google Geocoding API, and shows that city in the header. It uses **Ramat Gan, Israel** only when location access is denied or unavailable, and it says so on the page.
+
+Live Google Weather is used whenever a key or proxy is configured. The labeled sample forecast appears only when neither is set, with a prompt to add a key. Sample numbers are not live weather.
 
 ## What you can do
 
@@ -13,13 +15,13 @@ Until you add an API key, Sunny opens in **demo mode**: a clearly labeled sample
 - 10-day forecast with highs and lows
 - Rain warning that lists every hour **today** with more than 30% precipitation chance
 - Sunrise and sunset when the daily forecast includes them
-- Device location, city search, and saved cities
+- Device location on load, city search, and saved cities. The header chip names the city from Google Geocoding.
 - °C / °F. Celsius is the default. Every temperature is shown with a ° symbol
 - Light and dark themes
 - Installable PWA, with an offline view of the last forecast saved in this browser
 - Alerts from `publicAlerts:lookup`, with the publishing agency named and linked
 
-Times use the location’s time zone from the Weather API. If there is no saved place and location permission is not already granted, Sunny starts in **Ramat Gan, Israel**.
+Times use the location’s time zone from the Weather API. Ramat Gan is the fallback city, not the default.
 
 ## Set up a Google Maps Platform key
 
@@ -47,7 +49,7 @@ Do not commit a real key. Sunny reads it in this order:
 2. **Gitignored `config.json` for local development.** Copy `config.example.json` to `config.json` and set `apiKey`. `config.json` is listed in `.gitignore`.
 3. **Optional proxy.** Deploy `proxy/cloudflare-worker.js`, store the key as the worker secret `API_KEY`, and set `ALLOWED_ORIGINS` (for example `https://adir-sl.github.io,http://localhost:8080`). Put the worker’s `https` origin in Settings, or in `config.public.json` as `proxyBase` if every visitor should get live data. `config.public.json` is public — never put an API key in it. Sunny ignores `apiKey` in that file.
 
-`?demo=1` forces sample data even when a key is saved. The Settings checkbox “Always use demo data” does the same until you turn it off.
+A configured key or proxy always loads live data. Sample data is not a mode you can leave turned on beside a key.
 
 Direct browser calls work: `weather.googleapis.com`, `places.googleapis.com`, and the Geocoding API respond with CORS headers. The proxy is only there so the key does not have to live in the page.
 

@@ -47,7 +47,6 @@ export function writeStoredSettings(settings) {
     saved: true,
     apiKey: cleanText(settings.apiKey),
     proxyBase: cleanText(settings.proxyBase),
-    forceDemo: Boolean(settings.forceDemo),
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   return payload;
@@ -58,24 +57,19 @@ export function clearStoredSettings() {
 }
 
 /**
- * localStorage wins after the user saves Settings, so clearing the key
- * does not fall back to a config file. config.public.json may supply a
- * proxy URL only — an apiKey in that file is ignored.
+ * A saved browser key replaces a file key. A proxy in config.public.json
+ * still applies when the browser has not set its own proxy. An apiKey in
+ * config.public.json is ignored so a public file cannot publish a secret.
  */
 export function resolveSettings(stored, fileConfig = {}, publicConfig = {}) {
-  if (stored?.saved) {
-    return {
-      apiKey: cleanText(stored.apiKey),
-      proxyBase: safeProxy(stored.proxyBase),
-      forceDemo: Boolean(stored.forceDemo),
-      source: "browser",
-    };
-  }
+  const saved = Boolean(stored?.saved);
+  const apiKey = saved ? cleanText(stored.apiKey) : cleanText(fileConfig.apiKey);
+  const proxyBase = (saved ? safeProxy(stored.proxyBase) : safeProxy(fileConfig.proxyBase))
+    || safeProxy(publicConfig.proxyBase);
   return {
-    apiKey: cleanText(fileConfig.apiKey),
-    proxyBase: safeProxy(fileConfig.proxyBase) || safeProxy(publicConfig.proxyBase),
-    forceDemo: false,
-    source: "file",
+    apiKey,
+    proxyBase,
+    source: saved ? "browser" : "file",
   };
 }
 

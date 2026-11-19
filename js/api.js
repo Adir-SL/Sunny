@@ -213,7 +213,7 @@ export async function lookupPlace(placeId, settings, signal) {
 
 export async function reverseGeocode(lat, lng, settings, signal) {
   if (settings.demo) {
-    return { name: "Current location", region: `${lat.toFixed(2)}, ${lng.toFixed(2)}`, lat, lng };
+    return { name: "Current location", region: "", lat, lng, unnamed: true };
   }
   const url = endpoint(
     settings,
@@ -226,16 +226,18 @@ export async function reverseGeocode(lat, lng, settings, signal) {
   url.searchParams.set("result_type", "locality|postal_town|administrative_area_level_2");
   const body = await requestJson(url, { signal });
   const result = body.results?.[0];
-  if (!result) return { name: "Current location", region: "", lat, lng };
+  if (!result) return { name: "Current location", region: "", lat, lng, unnamed: true };
   const components = result.address_components || [];
   const locality = components.find((part) => part.types?.includes("locality") || part.types?.includes("postal_town"));
   const admin = components.find((part) => part.types?.includes("administrative_area_level_1"));
   const country = components.find((part) => part.types?.includes("country"));
+  const name = locality?.long_name || admin?.long_name || "Current location";
   return {
-    name: locality?.long_name || admin?.long_name || "Current location",
-    region: [admin?.long_name, country?.long_name].filter(Boolean).join(", "),
+    name,
+    region: locality ? (country?.long_name || "") : [admin?.long_name, country?.long_name].filter(Boolean).join(", "),
     lat,
     lng,
+    unnamed: name === "Current location",
   };
 }
 

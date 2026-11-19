@@ -34,6 +34,10 @@
           <p class="brand-tag">Google Weather</p>
         </div>
       </div>
+      <p id="location-chip" class="location-chip">
+        <span class="location-kicker">Your location</span>
+        <span class="location-name">Finding your location…</span>
+      </p>
       <form id="search-form" class="search" role="search">
         <label class="sr-only" for="search">Search for a city</label>
         <input id="search" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-list" placeholder="Search cities" autocomplete="off" enterkeyhint="search">
@@ -68,13 +72,12 @@
 
   <dialog id="settings-dialog" aria-labelledby="settings-title">
     <h2 id="settings-title">Settings</h2>
-    <p class="hint">The key stays in this browser only. Leave it blank to keep using sample data. A proxy is optional and keeps the key off this page.</p>
+    <p class="hint">The key stays in this browser only. With a key or a proxy, Sunny always loads live Google Weather. Leave both blank to keep the labeled sample forecast.</p>
     <form id="settings-form" class="form">
       <label for="api-key">Google Maps Platform API key</label>
       <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste a referrer-restricted key">
       <label for="proxy-base">Optional proxy URL</label>
       <input id="proxy-base" type="url" inputmode="url" placeholder="https://your-worker.workers.dev">
-      <label class="check"><input id="force-demo" type="checkbox"> Always use demo data</label>
       <p id="settings-error" class="form-error" role="alert"></p>
       <div class="dialog-actions">
         <button type="button" class="btn btn-quiet" id="clear-key">Clear key</button>

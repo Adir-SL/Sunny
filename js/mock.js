@@ -219,7 +219,7 @@ export function buildMockResponses(place, now = new Date()) {
         safetyRecommendations: [
           {
             directive: "Not a real alert.",
-            subtext: "Demo mode adds this card so you can see severity, timing, and source attribution.",
+            subtext: "Sample data adds this card so you can see severity, timing, and source attribution.",
           },
         ],
         startTime: now.toISOString(),

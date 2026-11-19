@@ -35,9 +35,14 @@ import {
 
 const HOURS_SHOWN = 24;
 const state = {
-  settings: { apiKey: "", proxyBase: "", forceDemo: false, source: "file" },
+  settings: { apiKey: "", proxyBase: "", source: "file" },
+  fileConfig: {},
+  publicConfig: {},
   demo: true,
-  place: loadPlace(),
+  place: { ...DEFAULT_PLACE },
+  locating: true,
+  locationSource: "pending",
+  locationNote: "",
   favorites: loadFavorites(),
   unit: localStorage.getItem("sunny.unit") === "f" ? "f" : "c",
   theme: document.documentElement.dataset.theme === "dark" ? "dark" : "light",
@@ -70,8 +75,8 @@ const els = {
   settingsForm: document.querySelector("#settings-form"),
   keyInput: document.querySelector("#api-key"),
   proxyInput: document.querySelector("#proxy-base"),
-  forceDemo: document.querySelector("#force-demo"),
   settingsError: document.querySelector("#settings-error"),
+  locationChip: document.querySelector("#location-chip"),
   themeButton: document.querySelector("#theme-toggle"),
   installButton: document.querySelector("#install"),
 };
@@ -82,19 +87,14 @@ async function boot() {
   applyTheme(state.theme);
   syncUnitButtons();
   const { fileConfig, publicConfig } = await loadConfigFiles();
+  state.fileConfig = fileConfig;
+  state.publicConfig = publicConfig;
   state.settings = resolveSettings(readStoredSettings(), fileConfig, publicConfig);
-  state.demo = forcedDemo();
+  state.demo = !hasLiveCredential(state.settings);
   bind();
   registerWorker();
-  await loadWeather();
-  maybeAutoLocate();
-}
-
-function forcedDemo() {
-  const params = new URLSearchParams(location.search);
-  if (params.get("demo") === "1") return true;
-  if (state.settings.forceDemo) return true;
-  return !hasLiveCredential(state.settings);
+  renderLocationChip();
+  await locate();
 }
 
 function bind() {
@@ -113,7 +113,7 @@ function bind() {
   document.querySelector("#favorites-close").addEventListener("click", () => els.favorites.close());
   document.querySelector("#clear-key").addEventListener("click", () => {
     els.keyInput.value = "";
-    els.forceDemo.checked = false;
+    els.proxyInput.value = "";
   });
   els.settingsForm.addEventListener("submit", saveSettings);
   els.search.addEventListener("input", onSearchInput);
@@ -156,50 +156,75 @@ function registerWorker() {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
 }
 
-async function maybeAutoLocate() {
-  if (localStorage.getItem("sunny.place")) return;
-  if (!navigator.permissions?.query || !navigator.geolocation) return;
-  try {
-    const status = await navigator.permissions.query({ name: "geolocation" });
-    if (status.state === "granted") locate();
-  } catch {
-    /* The button remains available. */
-  }
+function readDevicePosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(Object.assign(new Error("Geolocation is unavailable."), { code: 2 }));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: false,
+      timeout: 12000,
+      maximumAge: 60000,
+    });
+  });
 }
 
-function locate() {
-  if (!navigator.geolocation) {
-    announce("This browser cannot share your location.");
-    return;
-  }
+async function locate() {
+  state.locating = true;
+  state.locationSource = "pending";
+  state.locationNote = "";
+  renderLocationChip();
+  renderBanners();
+  if (!state.bundle) els.main.innerHTML = `<p class="muted">Finding your location…</p>`;
   announce("Finding your location…");
-  navigator.geolocation.getCurrentPosition(async (position) => {
+  try {
+    const position = await readDevicePosition();
     const lat = position.coords.latitude;
     const lng = position.coords.longitude;
-    let place = { name: "Current location", region: "", lat, lng };
+    let place = { name: "Current location", region: "", lat, lng, unnamed: true };
     try {
       place = await reverseGeocode(lat, lng, requestSettings(), new AbortController().signal);
     } catch {
-      /* Coordinates still work when reverse geocoding is unavailable. */
+      place = { ...place, unnamed: true };
     }
-    selectPlace(place);
-  }, () => {
-    announce("Location permission was denied. Showing the current city.");
-  }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 });
+    state.locating = false;
+    const unnamed = place.unnamed || place.name === "Current location";
+    state.locationNote = unnamed && !state.demo
+      ? "Google could not name these coordinates. The forecast still uses your location."
+      : "";
+    selectPlace({ ...place, unnamed }, "device");
+  } catch (error) {
+    state.locating = false;
+    const denied = error?.code === 1;
+    state.locationSource = "fallback";
+    state.locationNote = denied
+      ? "Location access was denied, so this forecast is for Ramat Gan, Israel."
+      : "Your location is unavailable, so this forecast is for Ramat Gan, Israel.";
+    state.place = { ...DEFAULT_PLACE };
+    state.selectedHour = 0;
+    announce(state.locationNote);
+    renderLocationChip();
+    loadWeather();
+  }
 }
 
-function selectPlace(place) {
+function selectPlace(place, source = "search") {
+  state.locationSource = source;
+  if (source !== "device") state.locationNote = "";
+  state.locating = false;
   state.place = {
     name: place.name || "Selected place",
     region: place.region || "",
     lat: Number(place.lat),
     lng: Number(place.lng),
     timeZone: place.timeZone || state.place.timeZone || DEFAULT_PLACE.timeZone,
+    unnamed: Boolean(place.unnamed) || place.name === "Current location",
   };
-  localStorage.setItem("sunny.place", JSON.stringify(state.place));
   state.selectedHour = 0;
   closeSearch();
   els.search.value = "";
+  renderLocationChip();
   loadWeather();
 }
 
@@ -208,7 +233,7 @@ async function loadWeather() {
   const abort = new AbortController();
   state.weatherAbort = abort;
   state.error = "";
-  state.demo = forcedDemo();
+  state.demo = !hasLiveCredential(state.settings);
   const cached = state.demo ? null : readCache(state.place);
   if (cached) {
     state.bundle = cached.bundle;
@@ -239,7 +264,6 @@ async function loadWeather() {
     const zone = timeZone();
     if (zone && state.place.timeZone !== zone) {
       state.place = { ...state.place, timeZone: zone };
-      localStorage.setItem("sunny.place", JSON.stringify(state.place));
     }
     render();
     const where = state.place.region ? `${state.place.name}, ${state.place.region}` : state.place.name;
@@ -260,6 +284,7 @@ function requestSettings() {
 
 function render() {
   const scrollY = window.scrollY;
+  renderLocationChip();
   renderBanners();
   if (state.loading && !state.bundle) {
     els.main.innerHTML = skeletonHtml();
@@ -272,7 +297,7 @@ function render() {
     state.bundle?.current?.isDaytime !== false,
   );
   if (!state.bundle) {
-    els.main.innerHTML = `<section class="panel empty"><h1>Weather unavailable</h1><p>${escapeHtml(state.error || "Something went wrong.")}</p><div class="empty-actions"><button type="button" class="btn" data-action="retry">Try again</button>${state.demo ? "" : `<button type="button" class="btn btn-quiet" data-action="demo">Preview sample data</button>`}</div></section>`;
+    els.main.innerHTML = `<section class="panel empty"><h1>Weather unavailable</h1><p>${escapeHtml(state.error || "Something went wrong.")}</p><div class="empty-actions"><button type="button" class="btn" data-action="retry">Try again</button></div></section>`;
     return;
   }
   els.main.innerHTML = layoutHtml();
@@ -282,7 +307,10 @@ function render() {
 function renderBanners() {
   const items = [];
   if (state.demo) {
-    items.push(`<div class="banner banner-demo" role="status"><strong>Demo mode.</strong> This is sample weather so you can preview Sunny. It is not live Google data. Add a key in Settings for live conditions.</div>`);
+    items.push(`<div class="banner banner-demo" role="status"><strong>Sample forecast.</strong> Add a Google API key in Settings to load live Google Weather. A key also names your location. This page stays on sample data until a key or proxy is set.</div>`);
+  }
+  if (state.locationNote) {
+    items.push(`<div class="banner banner-fallback" role="status">${escapeHtml(state.locationNote)}</div>`);
   }
   if (state.offline) {
     items.push(`<div class="banner banner-offline" role="status">${state.bundle ? "You are offline. Showing the last saved forecast." : "You are offline."}</div>`);
@@ -319,8 +347,8 @@ function layoutHtml() {
         <div class="hero-top">
           <div>
             <p class="eyebrow">${escapeHtml(formatLongDate(new Date(), zone))} · ${escapeHtml(zoneOffsetLabel(new Date(), zone))}</p>
-            <h1 id="place-name">${escapeHtml(state.place.name)}</h1>
-            ${state.place.region ? `<p class="region">${escapeHtml(state.place.region)}</p>` : ""}
+            <h1 id="place-name">${escapeHtml(placeTitle(state.place))}</h1>
+            ${state.place.unnamed ? `<p class="region">Your location</p>` : state.place.region ? `<p class="region">${escapeHtml(state.place.region)}</p>` : ""}
           </div>
           <button type="button" class="btn btn-save" data-action="favorite" aria-pressed="${saved ? "true" : "false"}">${saved ? "Saved" : "Save"}</button>
         </div>
@@ -537,7 +565,6 @@ function onMainClick(event) {
   const action = event.target.closest("[data-action]")?.dataset.action;
   if (action === "retry") loadWeather();
   if (action === "favorite") toggleFavorite();
-  if (action === "demo") useDemo();
   const tab = event.target.closest("[data-chart-tab]")?.dataset.chartTab;
   if (tab && tab !== state.chartTab) {
     state.chartTab = tab;
@@ -629,13 +656,12 @@ function applyTheme(theme) {
 function openSettings() {
   els.keyInput.value = state.settings.apiKey || "";
   els.proxyInput.value = state.settings.proxyBase || "";
-  els.forceDemo.checked = Boolean(state.settings.forceDemo);
   els.settingsError.textContent = "";
   els.settings.showModal();
   els.keyInput.focus();
 }
 
-function saveSettings(event) {
+async function saveSettings(event) {
   event.preventDefault();
   let proxyBase = "";
   try {
@@ -644,21 +670,23 @@ function saveSettings(event) {
     els.settingsError.textContent = error.message;
     return;
   }
-  state.settings = writeStoredSettings({
-    apiKey: els.keyInput.value,
-    proxyBase,
-    forceDemo: els.forceDemo.checked,
-  });
-  state.settings = resolveSettings(state.settings, {}, {});
+  const stored = writeStoredSettings({ apiKey: els.keyInput.value, proxyBase });
+  state.settings = resolveSettings(stored, state.fileConfig, state.publicConfig);
+  state.demo = !hasLiveCredential(state.settings);
   els.settings.close();
+  if (state.locationSource === "device") {
+    try {
+      const named = await reverseGeocode(state.place.lat, state.place.lng, requestSettings(), new AbortController().signal);
+      state.place = { ...state.place, ...named };
+      state.locationNote = named.unnamed && !state.demo
+        ? "Google could not name these coordinates. The forecast still uses your location."
+        : "";
+    } catch {
+      /* Keep the coordinates already on screen. */
+    }
+  }
   state.bundle = null;
-  loadWeather();
-}
-
-function useDemo() {
-  state.settings = writeStoredSettings({ ...state.settings, forceDemo: true });
-  state.settings = resolveSettings(state.settings, {}, {});
-  state.bundle = null;
+  renderLocationChip();
   loadWeather();
 }
 
@@ -817,16 +845,25 @@ function announce(message) {
   }, 30);
 }
 
-function loadPlace() {
-  try {
-    const saved = JSON.parse(localStorage.getItem("sunny.place") || "null");
-    if (saved && Number.isFinite(Number(saved.lat)) && Number.isFinite(Number(saved.lng))) {
-      return { ...DEFAULT_PLACE, ...saved, lat: Number(saved.lat), lng: Number(saved.lng) };
-    }
-  } catch {
-    /* Use the default city. */
+function placeTitle(place) {
+  if (place?.unnamed) return `${Number(place.lat).toFixed(2)}, ${Number(place.lng).toFixed(2)}`;
+  return place?.name || "Selected place";
+}
+
+function renderLocationChip() {
+  if (!els.locationChip) return;
+  let kicker = "Your location";
+  let name = "Finding your location…";
+  if (state.locationSource === "fallback") {
+    kicker = "Fallback";
+    name = "Ramat Gan, Israel";
+  } else if (state.locationSource === "device" || state.locationSource === "search") {
+    kicker = state.locationSource === "device" ? "Your location" : "Selected city";
+    name = state.place.unnamed
+      ? placeTitle(state.place)
+      : [state.place.name, state.place.region].filter(Boolean).join(", ");
   }
-  return { ...DEFAULT_PLACE };
+  els.locationChip.innerHTML = `<span class="location-kicker">${escapeHtml(kicker)}</span><span class="location-name">${escapeHtml(name)}</span>`;
 }
 
 function loadFavorites() {

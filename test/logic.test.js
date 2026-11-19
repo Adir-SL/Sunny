@@ -9,7 +9,7 @@ import {
   weekdayFromCivil,
   zonedTimeToUtc,
 } from "../js/format.js";
-import { normalizeProxyBase, resolveSettings } from "../js/settings.js";
+import { hasLiveCredential, normalizeProxyBase, resolveSettings } from "../js/settings.js";
 import { renderChart } from "../js/chart.js";
 
 test("temperatures always include a degree symbol", () => {
@@ -58,12 +58,16 @@ test("settings keep keys out of the public config", () => {
   assert.equal(resolved.apiKey, "");
   assert.equal(resolved.proxyBase, "https://proxy.example");
   const stored = resolveSettings(
-    { saved: true, apiKey: "", proxyBase: "", forceDemo: false },
+    { saved: true, apiKey: "", proxyBase: "" },
     { apiKey: "file-key" },
     { proxyBase: "https://proxy.example" },
   );
   assert.equal(stored.apiKey, "");
-  assert.equal(stored.proxyBase, "");
+  assert.equal(stored.proxyBase, "https://proxy.example");
+  const fileKey = resolveSettings(null, { apiKey: "file-key", proxyBase: "" }, {});
+  assert.equal(fileKey.apiKey, "file-key");
+  assert.equal(hasLiveCredential(fileKey), true);
+  assert.equal(hasLiveCredential(resolveSettings(null, {}, {})), false);
 });
 
 test("proxy URL must be https unless it is localhost", () => {
