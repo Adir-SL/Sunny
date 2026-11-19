@@ -305,7 +305,7 @@ button.location-chip[aria-expanded="true"] { background: var(--surface); }
   border: 1px solid var(--line);
   background: var(--surface);
   border-radius: 999px;
-  min-height: 44px;
+  min-height: 32px;
   padding: 0 14px;
   font-weight: var(--w-medium);
 }
@@ -352,7 +352,7 @@ button.location-chip[aria-expanded="true"] { background: var(--surface); }
   display: inline-flex;
   align-items: center;
   max-width: 100%;
-  min-height: 44px;
+  min-height: 32px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--bg);
@@ -362,8 +362,8 @@ button.location-chip[aria-expanded="true"] { background: var(--surface); }
   align-items: center;
   gap: 6px;
   min-width: 0;
-  min-height: 44px;
-  padding: 0 16px;
+  min-height: 30px;
+  padding: 0 14px;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -377,15 +377,23 @@ button.location-chip[aria-expanded="true"] { background: var(--surface); }
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  margin-right: 5px;
+  position: relative;
+  width: 28px;
+  height: 28px;
+  margin-right: 2px;
   padding: 0;
   border: 0;
   border-radius: 50%;
   background: transparent;
   color: var(--muted);
 }
+/* Invisible 44px tap area; it reaches further right and up/down than left so it doesn't steal taps from the city name. */
+.place-close::before {
+  content: "";
+  position: absolute;
+  inset: -8px -10px -8px -4px;
+}
+.place-close svg { width: 16px; height: 16px; }
 .place-close:hover, .place-close:active { background: color-mix(in srgb, var(--ink) 10%, transparent); }
 .place-tab.is-active { background: var(--ink); border-color: var(--ink); }
 .place-tab.is-active .place-open,
@@ -609,6 +617,18 @@ dialog::backdrop { background: rgba(16, 20, 26, 0.48); }
 .check { display: flex; gap: 8px; align-items: center; font-weight: var(--w-regular); }
 .hint, .form-error { color: var(--muted); font-size: 0.88rem; font-weight: var(--w-regular); line-height: 1.45; }
 .form-error:not(:empty) { color: var(--danger); }
+dialog.confirm { width: min(340px, calc(100% - 32px)); padding: 20px; }
+dialog.confirm::backdrop {
+  background: rgba(0, 0, 0, 0.62);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+.confirm h2 { font-size: 1.15rem; }
+.confirm .hint { margin-top: 6px; font-size: 0.92rem; }
+.confirm .dialog-actions { margin-top: 18px; }
+.confirm .dialog-actions .btn { flex: 1; min-height: 40px; }
+.btn-danger { background: #dc2626; border-color: #dc2626; color: #fff; }
+.btn-danger:active { background: #b91c1c; border-color: #b91c1c; }
 .dialog-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 8px; }
 
 .skeleton { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 8%, transparent), transparent); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; border-radius: 12px; }

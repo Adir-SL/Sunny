@@ -94,6 +94,7 @@ const els = {
   placesSearch: document.querySelector("#places-search"),
   placesInput: document.querySelector("#places-input"),
   placesList: document.querySelector("#places-list"),
+  confirmClose: document.querySelector("#confirm-close"),
 };
 /** Which search box the shared search logic drives: the settings sheet or the places popover. */
 let searchTarget = "settings";
@@ -1264,24 +1265,47 @@ function onPlacesTabClick(event) {
     return;
   }
   const close = event.target.closest("[data-place-close]");
-  if (close) {
-    const index = Number(close.dataset.placeClose);
-    const wasActive = index === activePlaceIndex();
-    state.favorites.splice(index, 1);
-    saveFavorites();
-    renderFavorites();
-    syncSaveButton();
-    if (wasActive) {
-      // Fall back to the tab on the left, like closing a browser tab.
-      const left = state.favorites[index - 1];
-      if (left) selectPlace(left);
-      else locate();
-    }
+  if (close) confirmClosePlace(Number(close.dataset.placeClose));
+}
+
+/** Ask before closing a city tab. Opening a modal dialog dismisses the popover, so reopen it afterwards. */
+async function confirmClosePlace(index) {
+  const place = state.favorites[index];
+  if (!place) return;
+  const dialog = els.confirmClose;
+  dialog.querySelector("#confirm-text").textContent =
+    `${place.name || "This city"} will be removed from your tabs and saved cities.`;
+  const answer = await new Promise((resolve) => {
+    dialog.returnValue = "";
+    dialog.addEventListener("close", () => resolve(dialog.returnValue), { once: true });
+    dialog.showModal();
+  });
+  if (answer === "confirm") closePlaceTab(index);
+  if (!isPlacesOpen()) {
+    if (popoverSupported) els.places.showPopover();
+    else openPlaces();
+  } else {
     renderPlaces();
-    const next = els.placesTabs.querySelectorAll("[data-place-close]")[Math.max(0, index - 1)]
-      || els.placesTabs.querySelector("[data-place-new]");
-    next?.focus();
   }
+  const next = answer === "confirm"
+    ? els.placesTabs.querySelectorAll("[data-place-close]")[Math.max(0, index - 1)]
+    : els.placesTabs.querySelectorAll("[data-place-close]")[index];
+  (next || els.placesTabs.querySelector("[data-place-new]"))?.focus();
+}
+
+function closePlaceTab(index) {
+  const wasActive = index === activePlaceIndex();
+  state.favorites.splice(index, 1);
+  saveFavorites();
+  renderFavorites();
+  syncSaveButton();
+  if (wasActive) {
+    // Fall back to the tab on the left, like closing a browser tab.
+    const left = state.favorites[index - 1];
+    if (left) selectPlace(left);
+    else locate();
+  }
+  renderPlaces();
 }
 
 function loadFavorites() {
