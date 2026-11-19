@@ -101,6 +101,9 @@ let searchTarget = "settings";
 const popoverSupported = typeof HTMLElement !== "undefined" && "popover" in HTMLElement.prototype;
 let drag = null;
 let lastRenderedBundle = null;
+/** Bumped whenever a place is chosen, so a slow device-location lookup can't override a newer choice. */
+let locateSeq = 0;
+let chipHtml = "";
 let keyTimer = 0;
 
 boot();
@@ -226,6 +229,7 @@ function readDevicePosition() {
 }
 
 async function locate() {
+  const run = ++locateSeq;
   state.locating = true;
   state.locationSource = "pending";
   state.locationNote = "";
@@ -235,6 +239,7 @@ async function locate() {
   announce("Finding your location…");
   try {
     const position = await readDevicePosition();
+    if (run !== locateSeq) return;
     const lat = position.coords.latitude;
     const lng = position.coords.longitude;
     let place = { name: "Current location", region: "", lat, lng, unnamed: true };
@@ -243,13 +248,15 @@ async function locate() {
     } catch {
       place = { ...place, unnamed: true };
     }
+    if (run !== locateSeq) return;
     state.locating = false;
     const unnamed = place.unnamed || place.name === "Current location";
     state.locationNote = unnamed && !state.demo
       ? "Google could not name these coordinates. The forecast still uses your location."
       : "";
-    selectPlace({ ...place, unnamed }, "device");
+    selectPlace({ ...place, unnamed }, "device", { fromLocate: true });
   } catch (error) {
+    if (run !== locateSeq) return;
     state.locating = false;
     const denied = error?.code === 1;
     state.locationSource = "fallback";
@@ -265,7 +272,8 @@ async function locate() {
   }
 }
 
-function selectPlace(place, source = "search") {
+function selectPlace(place, source = "search", { fromLocate = false } = {}) {
+  if (!fromLocate) locateSeq += 1; // cancel any pending locate()
   state.locationSource = source;
   if (source !== "device") state.locationNote = "";
   state.locating = false;
@@ -1110,7 +1118,12 @@ function renderLocationChip() {
   const busyText = name ? "Updating forecast" : "Finding your location";
   const spinner = busy ? `<span class="spinner" aria-hidden="true"></span><span class="sr-only">${busyText}…</span>` : "";
   const label = name ? `<span class="location-name">${escapeHtml(name)}</span>${CHEVRON}` : "";
-  els.locationChip.innerHTML = `<span class="location-kicker">${escapeHtml(kicker)}</span><span class="location-row">${label}${spinner}</span>`;
+  const html = `<span class="location-kicker">${escapeHtml(kicker)}</span><span class="location-row">${label}${spinner}</span>`;
+  // Only touch the DOM when something changed, so a tap isn't interrupted by an identical redraw.
+  if (html !== chipHtml) {
+    els.locationChip.innerHTML = html;
+    chipHtml = html;
+  }
 }
 
 const CHEVRON = `<svg class="chip-chevron" viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;

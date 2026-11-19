@@ -228,6 +228,8 @@ button.location-chip {
   -webkit-tap-highlight-color: transparent;
   transition: background-color 0.15s ease;
 }
+/* Taps always land on the button itself, even if its contents are redrawn mid-tap. */
+button.location-chip > * { pointer-events: none; }
 button.location-chip:active,
 button.location-chip[aria-expanded="true"] { background: var(--surface); }
 .chip-chevron {
