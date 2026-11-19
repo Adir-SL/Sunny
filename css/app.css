@@ -135,12 +135,23 @@ a { color: var(--teal); }
   z-index: 10;
   background: var(--bg);
 }
+.brand-slot {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  justify-self: start;
+}
+.brand-slot picture,
 .brand-mark {
   width: 32px;
   height: 32px;
   display: block;
-  justify-self: start;
 }
+.brand-theme { display: none; position: absolute; inset: 0; }
+:root[data-theme="light"] .brand-slot picture { display: none; }
+:root[data-theme="light"] .brand-theme-light { display: block; }
+:root[data-theme="dark"] .brand-slot picture { display: none; }
+:root[data-theme="dark"] .brand-theme-dark { display: block; }
 .gear {
   width: 48px;
   height: 48px;

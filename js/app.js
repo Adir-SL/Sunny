@@ -708,6 +708,12 @@ function applyTheme(pref, { persist = true } = {}) {
   if (persist) localStorage.setItem("sunny.theme", state.themePref);
   const color = state.theme === "dark" ? "#10141a" : "#f3efe6";
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", color);
+  const faviconLight = document.getElementById("favicon-light");
+  const faviconDark = document.getElementById("favicon-dark");
+  if (faviconLight && faviconDark) {
+    faviconLight.media = state.theme === "dark" ? "not all" : "all";
+    faviconDark.media = state.theme === "dark" ? "all" : "not all";
+  }
   document.querySelectorAll("[data-theme]").forEach((button) => {
     button.setAttribute("aria-pressed", button.dataset.theme === state.themePref ? "true" : "false");
   });
