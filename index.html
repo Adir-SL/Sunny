@@ -22,7 +22,7 @@
         : pref;
       document.documentElement.dataset.theme = theme;
       document.documentElement.dataset.themePref = pref;
-      document.querySelector('meta[name="theme-color"]').setAttribute("content", theme === "dark" ? "#10141a" : "#ffffff");
+      document.querySelector('meta[name="theme-color"]').setAttribute("content", theme === "dark" ? "#000000" : "#ffffff");
       var faviconLight = document.getElementById("favicon-light");
       var faviconDark = document.getElementById("favicon-dark");
       if (faviconLight && faviconDark) {

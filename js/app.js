@@ -706,7 +706,7 @@ function applyTheme(pref, { persist = true } = {}) {
   document.documentElement.dataset.theme = state.theme;
   document.documentElement.dataset.themePref = state.themePref;
   if (persist) localStorage.setItem("sunny.theme", state.themePref);
-  const color = state.theme === "dark" ? "#10141a" : "#ffffff";
+  const color = state.theme === "dark" ? "#000000" : "#ffffff";
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", color);
   const faviconLight = document.getElementById("favicon-light");
   const faviconDark = document.getElementById("favicon-dark");
