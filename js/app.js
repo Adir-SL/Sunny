@@ -915,7 +915,7 @@ function renderSectionList() {
     const label = DEFAULT_SECTIONS.find((section) => section.id === item.id)?.label || item.id;
     const last = index === state.layout.length - 1;
     return `<li class="section-row" data-id="${escapeHtml(item.id)}">
-      <button type="button" class="drag-handle" data-drag aria-label="Reorder ${escapeHtml(label)}. Use the arrow keys to move it."><span aria-hidden="true">⋮⋮</span></button>
+      <button type="button" class="drag-handle" data-drag aria-label="Reorder ${escapeHtml(label)}. Use the arrow keys to move it."><svg class="grip" viewBox="0 0 20 14" width="20" height="14" aria-hidden="true"><path d="M2 2.25h16M2 7h16M2 11.75h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg></button>
       <span class="section-label">${escapeHtml(label)}</span>
       <button type="button" class="btn btn-quiet move" data-move="-1" ${index === 0 ? "disabled" : ""} aria-label="Move ${escapeHtml(label)} up">Up</button>
       <button type="button" class="btn btn-quiet move" data-move="1" ${last ? "disabled" : ""} aria-label="Move ${escapeHtml(label)} down">Down</button>

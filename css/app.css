@@ -536,7 +536,8 @@ dialog.sheet {
   border-radius: 10px;
   touch-action: none;
 }
-.drag-handle { cursor: grab; border: 1px solid var(--line); background: transparent; color: var(--ink); }
+.drag-handle { cursor: grab; border: 1px solid var(--line); background: transparent; color: var(--ink); display: grid; place-items: center; }
+.grip { display: block; }
 .switch {
   width: 52px;
   height: 32px;
