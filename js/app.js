@@ -293,6 +293,7 @@ async function loadWeather() {
     render();
   } else {
     state.updating = true;
+    renderLocationChip();
     renderBanners();
   }
 
@@ -365,9 +366,6 @@ function renderBanners() {
     items.push(`<div class="banner banner-stale" role="status">Could not refresh (${escapeHtml(state.error)}). Showing saved data.</div>`);
   } else if (state.error && state.bundle && !state.stale) {
     items.push(`<div class="banner banner-error" role="alert">${escapeHtml(state.error)}</div>`);
-  }
-  if (state.updating) {
-    items.push(`<div class="banner banner-update" role="status">Updating forecast…</div>`);
   }
   els.banners.innerHTML = items.join("");
 }
@@ -1061,7 +1059,7 @@ function placeTitle(place) {
 function renderLocationChip() {
   if (!els.locationChip) return;
   let kicker = "Your location";
-  let name = "Finding your location…";
+  let name = "";
   if (state.locationSource === "fallback") {
     kicker = "Fallback";
     name = "Ramat Gan, Israel";
@@ -1071,7 +1069,11 @@ function renderLocationChip() {
       ? placeTitle(state.place)
       : [state.place.name, state.place.region].filter(Boolean).join(", ");
   }
-  els.locationChip.innerHTML = `<span class="location-kicker">${escapeHtml(kicker)}</span><span class="location-name">${escapeHtml(name)}</span>`;
+  const busy = !name || state.loading || state.updating;
+  const busyText = name ? "Updating forecast" : "Finding your location";
+  const spinner = busy ? `<span class="spinner" aria-hidden="true"></span><span class="sr-only">${busyText}…</span>` : "";
+  const label = name ? `<span class="location-name">${escapeHtml(name)}</span>` : "";
+  els.locationChip.innerHTML = `<span class="location-kicker">${escapeHtml(kicker)}</span><span class="location-row">${label}${spinner}</span>`;
 }
 
 function loadFavorites() {
