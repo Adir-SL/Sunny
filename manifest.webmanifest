@@ -11,7 +11,7 @@
   "icons": [
     {
       "src": "sunny.png",
-      "sizes": "272x272",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     }

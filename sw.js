@@ -1,4 +1,4 @@
-const CACHE = "sunny-v7";
+const CACHE = "sunny-v8";
 const ASSETS = [
   "./",
   "./index.html",
@@ -13,6 +13,7 @@ const ASSETS = [
   "./js/settings.js",
   "./manifest.webmanifest",
   "./sunny.png",
+  "./favicon.svg",
   "./config.public.json",
 ];
 

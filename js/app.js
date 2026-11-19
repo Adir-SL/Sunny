@@ -384,7 +384,13 @@ function layoutHtml() {
   const condition = current.weatherCondition?.description?.text || "Conditions unavailable";
   const temp = formatTemp(degreesOf(current.temperature), state.unit);
   const feels = formatTemp(degreesOf(current.feelsLikeTemperature), state.unit);
-  const updated = state.fetchedAt ? `Updated ${formatClock(new Date(state.fetchedAt), zone)}` : "";
+  const high = formatTemp(degreesOf(days[0]?.maxTemperature), state.unit);
+  const low = formatTemp(degreesOf(days[0]?.minTemperature), state.unit);
+  const summary = [
+    condition,
+    feels === "—" ? "" : `Feels like ${feels}`,
+    high === "—" && low === "—" ? "" : `H ${high} L ${low}`,
+  ].filter(Boolean).join(" · ");
 
   const blocks = {
     current: () => `<section class="hero" aria-labelledby="place-name">
@@ -393,11 +399,11 @@ function layoutHtml() {
         ${state.place.unnamed ? `<p class="region">Your location</p>` : state.place.region ? `<p class="region">${escapeHtml(state.place.region)}</p>` : ""}
         <div class="hero-main">
           ${iconImg(current.weatherCondition, current.isDaytime !== false, dark, "hero-icon")}
-          <div>
+          <div class="hero-readout">
             <p class="temp" aria-label="${escapeHtml(formatTempSpoken(degreesOf(current.temperature), state.unit))}">${temp}</p>
-            <p class="feels">Feels like ${feels}</p>
-            <p class="condition">${escapeHtml(condition)}</p>
+            <p class="summary">${escapeHtml(summary)}</p>
           </div>
+          ${sunHtml(days[0], zone)}
         </div>
         <dl class="stats">
           ${stat("Humidity", current.relativeHumidity != null ? `${current.relativeHumidity}%` : "—")}
@@ -405,8 +411,6 @@ function layoutHtml() {
           ${stat("UV", uvLabel(current.uvIndex))}
           ${stat("Precipitation", popLabel(current.precipitation))}
         </dl>
-        ${sunHtml(days[0], zone)}
-        <p class="updated">${escapeHtml(updated)}</p>
       </section>`,
     rain: () => rainHtml(rainy),
     alerts: () => alertsHtml(bundle, zone),
@@ -465,12 +469,23 @@ function popLabel(precipitation) {
   return `${percent}%`;
 }
 
+function sunGlyph(kind) {
+  const path = kind === "rise"
+    ? "M2.5 11.5h11M5 11.5a3 3 0 0 1 6 0M8 2.2v3.1M6.5 4.1 8 2.6l1.5 1.5"
+    : "M2.5 10.2h11M5 10.2a3 3 0 0 1 6 0M8 13.8V10.7M6.5 12 8 13.5 9.5 12";
+  const label = kind === "rise" ? "Sunrise" : "Sunset";
+  return `<svg class="sun-mini" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><title>${label}</title><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="${path}"/></svg>`;
+}
+
 function sunHtml(day, zone) {
   const sun = day?.sunEvents;
   if (!sun?.sunriseTime && !sun?.sunsetTime) return "";
   const rise = sun.sunriseTime ? formatClock(new Date(sun.sunriseTime), zone) : "—";
   const set = sun.sunsetTime ? formatClock(new Date(sun.sunsetTime), zone) : "—";
-  return `<div class="sun-row"><span>Sunrise <strong>${escapeHtml(rise)}</strong></span><span>Sunset <strong>${escapeHtml(set)}</strong></span></div>`;
+  return `<div class="sun-stack">
+    <p>${sunGlyph("rise")}<strong>${escapeHtml(rise)}</strong><span class="sr-only">sunrise</span></p>
+    <p>${sunGlyph("set")}<strong>${escapeHtml(set)}</strong><span class="sr-only">sunset</span></p>
+  </div>`;
 }
 
 function rainHtml(hours) {
