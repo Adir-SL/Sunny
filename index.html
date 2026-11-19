@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="Sunny shows current conditions, an hourly chart, and a 10-day forecast from Google Weather.">
-  <meta name="theme-color" content="#f3efe6">
+  <meta name="theme-color" content="#ffffff">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Sunny">
   <title>Sunny</title>
@@ -22,7 +22,7 @@
         : pref;
       document.documentElement.dataset.theme = theme;
       document.documentElement.dataset.themePref = pref;
-      document.querySelector('meta[name="theme-color"]').setAttribute("content", theme === "dark" ? "#10141a" : "#f3efe6");
+      document.querySelector('meta[name="theme-color"]').setAttribute("content", theme === "dark" ? "#10141a" : "#ffffff");
       var faviconLight = document.getElementById("favicon-light");
       var faviconDark = document.getElementById("favicon-dark");
       if (faviconLight && faviconDark) {

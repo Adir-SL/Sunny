@@ -1,8 +1,8 @@
 :root {
   color-scheme: light;
-  --bg: #f3efe6;
+  --bg: #ffffff;
   --wash: rgba(255, 186, 92, 0.55);
-  --surface: #fffdf8;
+  --surface: #f4f5f7;
   --ink: #1b2330;
   --muted: #5c6670;
   --line: rgba(27, 35, 48, 0.12);
