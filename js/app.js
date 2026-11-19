@@ -414,8 +414,8 @@ function layoutHtml() {
       <div class="panel-head">
         <h2 id="hourly-title">Hourly</h2>
         <div class="tabs" role="tablist" aria-label="Hourly chart">
-          ${tab("temp", "Temperature")}
-          ${tab("precip", "Precipitation")}
+          ${tab("temp", "Temp", "Temperature")}
+          ${tab("precip", "Precip", "Precipitation")}
           ${tab("wind", "Wind")}
         </div>
       </div>
@@ -441,9 +441,9 @@ function stat(label, value) {
   return `<div class="stat"><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`;
 }
 
-function tab(id, label) {
+function tab(id, label, spoken = label) {
   const selected = state.chartTab === id;
-  return `<button type="button" class="tab" role="tab" data-chart-tab="${id}" aria-selected="${selected ? "true" : "false"}">${label}</button>`;
+  return `<button type="button" class="tab" role="tab" data-chart-tab="${id}" aria-selected="${selected ? "true" : "false"}" aria-label="${escapeHtml(spoken)}">${escapeHtml(label)}</button>`;
 }
 
 function windLabel(wind) {
