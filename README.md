@@ -16,6 +16,7 @@ Live Google Weather is used whenever a key or proxy is configured. The labeled s
 - Rain warning that lists every hour **today** with more than 30% precipitation chance
 - Sunrise and sunset when the daily forecast includes them
 - Device location on load, city search, and saved cities. The header chip names the city from Places Nearby Search.
+- One settings control for search, units, theme (system, light, or dark), the API key, and the order of the weather cards. Those choices are saved in this browser.
 - °C / °F. Celsius is the default. Every temperature is shown with a ° symbol
 - Light and dark themes
 - Installable PWA, with an offline view of the last forecast saved in this browser
@@ -45,7 +46,7 @@ The key is required for live data. It is **not** stored in this repository.
 
 Do not commit a real key. Sunny reads it in this order:
 
-1. **Settings in the app (best for GitHub Pages).** Open Settings, paste the key, and save. It is stored in `localStorage` on that browser only and is sent only to Google (or to your proxy). Each browser you use needs the key once. Other visitors stay in demo mode unless you deploy the proxy below.
+1. **Settings in the app (best for GitHub Pages).** Open the gear icon, paste the key, and it is stored in this browser as you type. It is sent only to Google (or to your proxy). Each browser you use needs the key once. Other visitors stay on the sample forecast unless you deploy the proxy below.
 2. **Gitignored `config.json` for local development.** Copy `config.example.json` to `config.json` and set `apiKey`. `config.json` is listed in `.gitignore`.
 3. **Optional proxy.** Deploy `proxy/cloudflare-worker.js`, store the key as the worker secret `API_KEY`, and set `ALLOWED_ORIGINS` (for example `https://adir-sl.github.io,http://localhost:8080`). Put the worker’s `https` origin in Settings, or in `config.public.json` as `proxyBase` if every visitor should get live data. `config.public.json` is public — never put an API key in it. Sunny ignores `apiKey` in that file.
 

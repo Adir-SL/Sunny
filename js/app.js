@@ -26,6 +26,15 @@ import {
 } from "./format.js";
 import { fallbackIconSvg, iconUrl } from "./icons.js";
 import {
+  DEFAULT_SECTIONS,
+  defaultLayout,
+  moveSection,
+  readLayout,
+  reorderSection,
+  setSectionVisible,
+  writeLayout,
+} from "./layout.js";
+import {
   hasLiveCredential,
   normalizeProxyBase,
   readStoredSettings,
@@ -45,7 +54,9 @@ const state = {
   locationNote: "",
   favorites: loadFavorites(),
   unit: localStorage.getItem("sunny.unit") === "f" ? "f" : "c",
+  themePref: document.documentElement.dataset.themePref || "system",
   theme: document.documentElement.dataset.theme === "dark" ? "dark" : "light",
+  layout: readLayout(localStorage),
   bundle: null,
   fetchedAt: null,
   stale: false,
@@ -70,21 +81,22 @@ const els = {
   search: document.querySelector("#search"),
   searchList: document.querySelector("#search-list"),
   settings: document.querySelector("#settings-dialog"),
-  favorites: document.querySelector("#favorites-dialog"),
   favoriteList: document.querySelector("#favorite-list"),
-  settingsForm: document.querySelector("#settings-form"),
+  sectionList: document.querySelector("#section-list"),
   keyInput: document.querySelector("#api-key"),
   proxyInput: document.querySelector("#proxy-base"),
   settingsError: document.querySelector("#settings-error"),
   locationChip: document.querySelector("#location-chip"),
-  themeButton: document.querySelector("#theme-toggle"),
   installButton: document.querySelector("#install"),
+  savePlace: document.querySelector("#save-place"),
 };
+let drag = null;
+let keyTimer = 0;
 
 boot();
 
 async function boot() {
-  applyTheme(state.theme);
+  applyTheme(state.themePref, { persist: false });
   syncUnitButtons();
   const { fileConfig, publicConfig } = await loadConfigFiles();
   state.fileConfig = fileConfig;
@@ -93,29 +105,59 @@ async function boot() {
   state.demo = !hasLiveCredential(state.settings);
   bind();
   registerWorker();
+  renderSectionList();
+  renderFavorites();
+  const saved = readPlace();
+  if (saved) {
+    state.place = saved.place;
+    state.locationSource = saved.source;
+    state.locationNote = saved.note;
+    state.locating = false;
+    renderLocationChip();
+    await loadWeather();
+    return;
+  }
   renderLocationChip();
   await locate();
 }
 
 function bind() {
   document.querySelector("#locate").addEventListener("click", locate);
-  document.querySelector("#refresh-page")?.addEventListener("click", () => loadWeather());
+  document.querySelector("#refresh-forecast").addEventListener("click", () => loadWeather());
+  document.querySelector("#save-place").addEventListener("click", toggleFavorite);
   document.querySelectorAll("[data-unit]").forEach((button) => {
     button.addEventListener("click", () => setUnit(button.dataset.unit));
   });
-  els.themeButton.addEventListener("click", () => {
-    applyTheme(state.theme === "dark" ? "light" : "dark");
-    render();
+  document.querySelectorAll("[data-theme]").forEach((button) => {
+    button.addEventListener("click", () => {
+      applyTheme(button.dataset.theme);
+      render();
+    });
   });
   document.querySelector("#settings-open").addEventListener("click", openSettings);
-  document.querySelector("#favorites-open").addEventListener("click", openFavorites);
-  document.querySelector("#settings-cancel").addEventListener("click", () => els.settings.close());
-  document.querySelector("#favorites-close").addEventListener("click", () => els.favorites.close());
+  document.querySelector("#settings-close").addEventListener("click", () => els.settings.close());
+  document.querySelector("#reset-layout").addEventListener("click", () => {
+    state.layout = defaultLayout();
+    writeLayout(state.layout, localStorage);
+    renderSectionList();
+    render();
+  });
   document.querySelector("#clear-key").addEventListener("click", () => {
     els.keyInput.value = "";
     els.proxyInput.value = "";
+    commitKeys();
   });
-  els.settingsForm.addEventListener("submit", saveSettings);
+  els.keyInput.addEventListener("input", scheduleKeySave);
+  els.proxyInput.addEventListener("input", scheduleKeySave);
+  els.keyInput.addEventListener("change", commitKeys);
+  els.proxyInput.addEventListener("change", commitKeys);
+  bindSectionList();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (state.themePref === "system") {
+      applyTheme("system");
+      render();
+    }
+  });
   els.search.addEventListener("input", onSearchInput);
   els.search.addEventListener("keydown", onSearchKeydown);
   document.querySelector("#search-form").addEventListener("submit", (event) => {
@@ -204,6 +246,7 @@ async function locate() {
     state.place = { ...DEFAULT_PLACE };
     state.selectedHour = 0;
     announce(state.locationNote);
+    writePlace();
     renderLocationChip();
     loadWeather();
   }
@@ -223,8 +266,10 @@ function selectPlace(place, source = "search") {
   };
   state.selectedHour = 0;
   closeSearch();
-  els.search.value = "";
+  if (els.search) els.search.value = "";
+  writePlace();
   renderLocationChip();
+  syncSaveButton();
   loadWeather();
 }
 
@@ -285,6 +330,7 @@ function requestSettings() {
 function render() {
   const scrollY = window.scrollY;
   renderLocationChip();
+  syncSaveButton();
   renderBanners();
   if (state.loading && !state.bundle) {
     els.main.innerHTML = skeletonHtml();
@@ -335,23 +381,16 @@ function layoutHtml() {
   const selected = hours[state.selectedHour] || hours[0];
   const rainy = rainyHours(bundle.hours?.forecastHours || [], zone, new Date(), RAIN_THRESHOLD);
   const dark = state.theme === "dark";
-  const saved = isFavorite(state.place);
   const condition = current.weatherCondition?.description?.text || "Conditions unavailable";
   const temp = formatTemp(degreesOf(current.temperature), state.unit);
   const feels = formatTemp(degreesOf(current.feelsLikeTemperature), state.unit);
   const updated = state.fetchedAt ? `Updated ${formatClock(new Date(state.fetchedAt), zone)}` : "";
 
-  return `<div class="layout">
-    <div class="primary">
-      <section class="hero" aria-labelledby="place-name">
-        <div class="hero-top">
-          <div>
-            <p class="eyebrow">${escapeHtml(formatLongDate(new Date(), zone))} · ${escapeHtml(zoneOffsetLabel(new Date(), zone))}</p>
-            <h1 id="place-name">${escapeHtml(placeTitle(state.place))}</h1>
-            ${state.place.unnamed ? `<p class="region">Your location</p>` : state.place.region ? `<p class="region">${escapeHtml(state.place.region)}</p>` : ""}
-          </div>
-          <button type="button" class="btn btn-save" data-action="favorite" aria-pressed="${saved ? "true" : "false"}">${saved ? "Saved" : "Save"}</button>
-        </div>
+  const blocks = {
+    current: () => `<section class="hero" aria-labelledby="place-name">
+        <p class="eyebrow">${escapeHtml(formatLongDate(new Date(), zone))} · ${escapeHtml(zoneOffsetLabel(new Date(), zone))}</p>
+        <h1 id="place-name">${escapeHtml(placeTitle(state.place))}</h1>
+        ${state.place.unnamed ? `<p class="region">Your location</p>` : state.place.region ? `<p class="region">${escapeHtml(state.place.region)}</p>` : ""}
         <div class="hero-main">
           ${iconImg(current.weatherCondition, current.isDaytime !== false, dark, "hero-icon")}
           <div>
@@ -367,15 +406,11 @@ function layoutHtml() {
           ${stat("Precipitation", popLabel(current.precipitation))}
         </dl>
         ${sunHtml(days[0], zone)}
-        <p class="updated"><span>${escapeHtml(updated)}</span> <button type="button" class="btn btn-quiet" data-action="retry">Refresh</button></p>
-      </section>
-      ${rainHtml(rainy)}
-    </div>
-    <aside class="side">
-      ${alertsHtml(bundle, zone)}
-      ${detailsHtml(current)}
-    </aside>
-    <section class="panel hourly" aria-labelledby="hourly-title">
+        <p class="updated">${escapeHtml(updated)}</p>
+      </section>`,
+    rain: () => rainHtml(rainy),
+    alerts: () => alertsHtml(bundle, zone),
+    hourly: () => `<section class="panel hourly" aria-labelledby="hourly-title">
       <div class="panel-head">
         <h2 id="hourly-title">Hourly</h2>
         <div class="tabs" role="tablist" aria-label="Hourly chart">
@@ -388,12 +423,18 @@ function layoutHtml() {
       <div class="chart-wrap" role="tabpanel">${renderChart({ hours, mode: state.chartTab, unit: state.unit, selectedIndex: state.selectedHour })}</div>
       ${selected ? `<p class="hour-detail">${hourDetail(selected)}</p>` : ""}
       ${hoursTable(hours)}
-    </section>
-    <section class="panel daily" aria-labelledby="daily-title">
+    </section>`,
+    daily: () => `<section class="panel daily" aria-labelledby="daily-title">
       <div class="panel-head"><h2 id="daily-title">10-day forecast</h2></div>
       <ol class="day-list">${days.slice(0, 10).map((day, index) => dayRow(day, index, zone, dark)).join("")}</ol>
-    </section>
-  </div>`;
+    </section>`,
+    details: () => detailsHtml(current),
+  };
+  const cards = state.layout
+    .filter((section) => section.visible && blocks[section.id])
+    .map((section) => blocks[section.id]())
+    .join("");
+  return `<div class="cards">${cards || `<p class="muted">All cards are hidden. Open settings to show one.</p>`}</div>`;
 }
 
 function stat(label, value) {
@@ -618,6 +659,8 @@ function toggleFavorite() {
     announce(`${state.place.name} saved.`);
   }
   localStorage.setItem("sunny.favorites", JSON.stringify(state.favorites));
+  renderFavorites();
+  syncSaveButton();
   render();
 }
 
@@ -640,14 +683,19 @@ function syncUnitButtons() {
   });
 }
 
-function applyTheme(theme) {
-  state.theme = theme === "dark" ? "dark" : "light";
+function applyTheme(pref, { persist = true } = {}) {
+  state.themePref = pref === "light" || pref === "dark" ? pref : "system";
+  state.theme = state.themePref === "system"
+    ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+    : state.themePref;
   document.documentElement.dataset.theme = state.theme;
-  localStorage.setItem("sunny.theme", state.theme);
+  document.documentElement.dataset.themePref = state.themePref;
+  if (persist) localStorage.setItem("sunny.theme", state.themePref);
   const color = state.theme === "dark" ? "#10141a" : "#f3efe6";
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", color);
-  els.themeButton.textContent = state.theme === "dark" ? "Light" : "Dark";
-  els.themeButton.setAttribute("aria-label", state.theme === "dark" ? "Switch to light theme" : "Switch to dark theme");
+  document.querySelectorAll("[data-theme]").forEach((button) => {
+    button.setAttribute("aria-pressed", button.dataset.theme === state.themePref ? "true" : "false");
+  });
   const type = state.bundle?.current?.weatherCondition?.type;
   const daytime = state.bundle?.current?.isDaytime !== false;
   document.body.dataset.sky = skyFromCondition(type, daytime);
@@ -657,30 +705,40 @@ function openSettings() {
   els.keyInput.value = state.settings.apiKey || "";
   els.proxyInput.value = state.settings.proxyBase || "";
   els.settingsError.textContent = "";
-  els.settings.showModal();
-  els.keyInput.focus();
+  renderSectionList();
+  renderFavorites();
+  syncSaveButton();
+  if (!els.settings.open) els.settings.showModal();
 }
 
-async function saveSettings(event) {
-  event.preventDefault();
-  let proxyBase = "";
+function scheduleKeySave() {
+  window.clearTimeout(keyTimer);
+  keyTimer = window.setTimeout(() => { commitKeys(); }, 400);
+}
+
+async function commitKeys() {
+  window.clearTimeout(keyTimer);
+  let proxyBase = state.settings.proxyBase;
   try {
     proxyBase = normalizeProxyBase(els.proxyInput.value);
+    els.settingsError.textContent = "";
   } catch (error) {
     els.settingsError.textContent = error.message;
     return;
   }
-  const stored = writeStoredSettings({ apiKey: els.keyInput.value, proxyBase });
+  const nextKey = els.keyInput.value.trim();
+  if (nextKey === state.settings.apiKey && proxyBase === state.settings.proxyBase) return;
+  const stored = writeStoredSettings({ apiKey: nextKey, proxyBase });
   state.settings = resolveSettings(stored, state.fileConfig, state.publicConfig);
   state.demo = !hasLiveCredential(state.settings);
-  els.settings.close();
   if (state.locationSource === "device") {
     try {
       const named = await reverseGeocode(state.place.lat, state.place.lng, requestSettings(), new AbortController().signal);
-      state.place = { ...state.place, ...named };
-      state.locationNote = named.unnamed && !state.demo
+      state.place = { ...state.place, ...named, unnamed: Boolean(named.unnamed) || named.name === "Current location" };
+      state.locationNote = state.place.unnamed && !state.demo
         ? "Google could not name these coordinates. The forecast still uses your location."
         : "";
+      writePlace();
     } catch {
       /* Keep the coordinates already on screen. */
     }
@@ -688,11 +746,6 @@ async function saveSettings(event) {
   state.bundle = null;
   renderLocationChip();
   loadWeather();
-}
-
-function openFavorites() {
-  renderFavorites();
-  els.favorites.showModal();
 }
 
 function renderFavorites() {
@@ -711,7 +764,7 @@ function onFavoriteClick(event) {
   const remove = event.target.closest("[data-fav-remove]");
   if (open) {
     const place = state.favorites[Number(open.dataset.favOpen)];
-    els.favorites.close();
+    els.settings.close();
     if (place) selectPlace(place);
   }
   if (remove) {
@@ -788,6 +841,7 @@ async function chooseSearch(index) {
   if (result.placeId && !state.demo) {
     try {
       const place = await lookupPlace(result.placeId, requestSettings(), new AbortController().signal);
+      els.settings.close();
       selectPlace(place);
       return;
     } catch (error) {
@@ -796,7 +850,10 @@ async function chooseSearch(index) {
       return;
     }
   }
-  if (Number.isFinite(result.lat) && Number.isFinite(result.lng)) selectPlace(result);
+  if (Number.isFinite(result.lat) && Number.isFinite(result.lng)) {
+    els.settings.close();
+    selectPlace(result);
+  }
 }
 
 function closeSearch() {
@@ -843,6 +900,133 @@ function announce(message) {
   window.setTimeout(() => {
     els.live.textContent = message;
   }, 30);
+}
+
+function syncSaveButton() {
+  if (!els.savePlace) return;
+  const saved = isFavorite(state.place);
+  els.savePlace.textContent = saved ? "Saved" : "Save place";
+  els.savePlace.setAttribute("aria-pressed", saved ? "true" : "false");
+}
+
+function renderSectionList() {
+  if (!els.sectionList) return;
+  els.sectionList.innerHTML = state.layout.map((item, index) => {
+    const label = DEFAULT_SECTIONS.find((section) => section.id === item.id)?.label || item.id;
+    const last = index === state.layout.length - 1;
+    return `<li class="section-row" data-id="${escapeHtml(item.id)}">
+      <button type="button" class="drag-handle" data-drag aria-label="Reorder ${escapeHtml(label)}. Use the arrow keys to move it."><span aria-hidden="true">⋮⋮</span></button>
+      <span class="section-label">${escapeHtml(label)}</span>
+      <button type="button" class="btn btn-quiet move" data-move="-1" ${index === 0 ? "disabled" : ""} aria-label="Move ${escapeHtml(label)} up">Up</button>
+      <button type="button" class="btn btn-quiet move" data-move="1" ${last ? "disabled" : ""} aria-label="Move ${escapeHtml(label)} down">Down</button>
+      <button type="button" class="switch" role="switch" data-visible aria-checked="${item.visible ? "true" : "false"}" aria-label="${item.visible ? "Hide" : "Show"} ${escapeHtml(label)}"><span class="switch-knob"></span></button>
+    </li>`;
+  }).join("");
+}
+
+function commitLayout() {
+  writeLayout(state.layout, localStorage);
+  render();
+}
+
+function bindSectionList() {
+  const list = els.sectionList;
+  list.addEventListener("click", (event) => {
+    const row = event.target.closest("[data-id]");
+    if (!row) return;
+    const id = row.dataset.id;
+    const move = event.target.closest("[data-move]");
+    if (move) {
+      state.layout = moveSection(state.layout, id, Number(move.dataset.move));
+      commitLayout();
+      renderSectionList();
+      list.querySelector(`[data-id="${CSS.escape(id)}"] [data-move="${move.dataset.move}"]`)?.focus();
+      return;
+    }
+    if (event.target.closest("[data-visible]")) {
+      const item = state.layout.find((section) => section.id === id);
+      state.layout = setSectionVisible(state.layout, id, !item.visible);
+      commitLayout();
+      renderSectionList();
+      list.querySelector(`[data-id="${CSS.escape(id)}"] [data-visible]`)?.focus();
+    }
+  });
+  list.addEventListener("keydown", (event) => {
+    const handle = event.target.closest("[data-drag]");
+    if (!handle || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
+    event.preventDefault();
+    const id = handle.closest("[data-id]").dataset.id;
+    state.layout = moveSection(state.layout, id, event.key === "ArrowUp" ? -1 : 1);
+    commitLayout();
+    renderSectionList();
+    list.querySelector(`[data-id="${CSS.escape(id)}"] [data-drag]`)?.focus();
+  });
+  list.addEventListener("pointerdown", onSectionPointerDown);
+  list.addEventListener("pointermove", onSectionPointerMove);
+  list.addEventListener("pointerup", endSectionDrag);
+  list.addEventListener("pointercancel", endSectionDrag);
+}
+
+function onSectionPointerDown(event) {
+  const handle = event.target.closest("[data-drag]");
+  if (!handle || event.button > 0) return;
+  const row = handle.closest("[data-id]");
+  drag = { id: row.dataset.id, pointerId: event.pointerId };
+  row.classList.add("is-dragging");
+  handle.setPointerCapture(event.pointerId);
+}
+
+function onSectionPointerMove(event) {
+  if (!drag || event.pointerId !== drag.pointerId) return;
+  const list = els.sectionList;
+  const rows = [...list.querySelectorAll(".section-row")];
+  const dragRow = list.querySelector(`[data-id="${CSS.escape(drag.id)}"]`);
+  if (!dragRow) return;
+  let newIndex = rows.length - 1;
+  for (let index = 0; index < rows.length; index += 1) {
+    const box = rows[index].getBoundingClientRect();
+    if (event.clientY < box.top + box.height / 2) {
+      newIndex = index;
+      break;
+    }
+  }
+  const current = rows.indexOf(dragRow);
+  if (newIndex === current) return;
+  state.layout = reorderSection(state.layout, drag.id, newIndex);
+  const nextRow = rows[newIndex];
+  list.insertBefore(dragRow, newIndex > current ? nextRow.nextSibling : nextRow);
+  writeLayout(state.layout, localStorage);
+  render();
+}
+
+function endSectionDrag(event) {
+  if (!drag || event.pointerId !== drag.pointerId) return;
+  els.sectionList.querySelector(`[data-id="${CSS.escape(drag.id)}"]`)?.classList.remove("is-dragging");
+  drag = null;
+}
+
+function readPlace() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("sunny.place") || "null");
+    const place = saved?.place;
+    if (!place || !Number.isFinite(Number(place.lat)) || !Number.isFinite(Number(place.lng))) return null;
+    if (!["device", "search", "fallback"].includes(saved.source)) return null;
+    return {
+      source: saved.source,
+      note: typeof saved.note === "string" ? saved.note : "",
+      place: { ...DEFAULT_PLACE, ...place, lat: Number(place.lat), lng: Number(place.lng) },
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writePlace() {
+  localStorage.setItem("sunny.place", JSON.stringify({
+    source: state.locationSource,
+    note: state.locationNote,
+    place: state.place,
+  }));
 }
 
 function placeTitle(place) {
