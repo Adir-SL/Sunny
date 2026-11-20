@@ -468,19 +468,19 @@ button.location-chip[aria-expanded="true"] { background: var(--surface); }
 .hero-readout { min-width: 0; flex: 1; }
 .hero-icon-slot {
   flex: 0 0 auto;
-  width: min(46%, 190px);
-  min-width: 124px;
-  align-self: stretch;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  width: min(42%, 168px);
+  aspect-ratio: 1;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  overflow: visible;
 }
 .hero-icon {
-  width: 176%;
-  height: 176%;
-  max-width: none;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+  transform: scale(1.12);
+  transform-origin: center;
   pointer-events: none;
 }
 .hero-foot {
@@ -523,8 +523,8 @@ button.location-chip[aria-expanded="true"] { background: var(--surface); }
 }
 .feels { color: var(--muted); font-size: 0.88rem; font-weight: var(--w-regular); margin-top: 2px; }
 @media (max-width: 430px) {
-  .hero-icon-slot { width: min(44%, 150px); min-width: 112px; }
-  .hero-icon { width: 188%; height: 188%; }
+  .hero-icon-slot { width: min(40%, 140px); }
+  .hero-icon { transform: scale(1.08); }
   .condition { max-width: 5.6rem; font-size: 0.75rem; }
   .hl { gap: 6px 10px; }
   .hl strong { font-size: 1.35rem; }
