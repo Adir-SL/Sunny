@@ -452,17 +452,36 @@ button.location-chip[aria-expanded="true"] { background: var(--surface); }
 .hero .zone { opacity: 0.5; }
 .hero h1 { font-size: 1.5rem; line-height: 1.15; letter-spacing: -0.025em; }
 .hero .region { font-size: 0.85rem; font-weight: var(--w-regular); margin-top: 1px; }
-.hero-body { display: flex; align-items: flex-start; gap: 8px; }
-.hero-readout { min-width: 0; flex: 1; }
-.hero-side {
-  flex: 0 0 104px;
-  width: 104px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
+.hero-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 8px;
+  align-items: baseline;
 }
-.hero-icon { width: 84px; height: 84px; }
+.hero-mid {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+}
+.hero-readout { min-width: 0; flex: 1; }
+.hero-icon-slot {
+  flex: 0 0 128px;
+  width: 128px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hero-icon { width: 100%; height: 100%; object-fit: contain; }
+.hero-foot {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
 .temp {
   font-size: clamp(3.2rem, 15vw, 4.2rem);
   font-weight: var(--w-thin);
@@ -471,8 +490,9 @@ button.location-chip[aria-expanded="true"] { background: var(--surface); }
   margin-left: -0.04em;
 }
 .condition {
-  margin-top: -2px;
-  max-width: 100%;
+  justify-self: end;
+  max-width: 7.5rem;
+  text-align: right;
   font-size: 0.84rem;
   font-weight: var(--w-medium);
   line-height: 1.15;
@@ -494,13 +514,13 @@ button.location-chip[aria-expanded="true"] { background: var(--surface); }
 }
 .feels { color: var(--muted); font-size: 0.88rem; font-weight: var(--w-regular); margin-top: 2px; }
 @media (max-width: 430px) {
-  .hero-side { flex-basis: 84px; width: 84px; }
-  .hero-icon { width: 68px; height: 68px; }
-  .condition { font-size: 0.78rem; }
+  .hero-icon-slot { flex-basis: 92px; width: 92px; }
+  .condition { max-width: 5.6rem; font-size: 0.75rem; }
   .hl { gap: 6px 10px; }
   .hl strong { font-size: 1.35rem; }
+  .sun-stack { gap: 8px; }
 }
-.sun-stack { display: grid; gap: 2px; margin-top: 8px; justify-items: center; font-size: 0.82rem; }
+.sun-stack { display: flex; align-items: baseline; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin: 0; font-size: 0.82rem; }
 .sun-stack p { display: flex; align-items: center; gap: 5px; color: var(--muted); }
 .sun-stack strong { color: var(--ink); font-weight: var(--w-medium); }
 .sun-stack.is-paired { grid-template-columns: auto auto; column-gap: 14px; }

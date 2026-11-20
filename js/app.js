@@ -431,17 +431,21 @@ function layoutHtml() {
   const blocks = {
     current: () => `<section class="hero" aria-labelledby="place-name">
         <div class="hero-body">
-          <div class="hero-readout">
-            <p class="eyebrow">${escapeHtml(formatLongDate(new Date(), zone))} <span class="zone">· ${escapeHtml(zoneOffsetLabel(new Date(), zone))}</span></p>
-            <h1 id="place-name">${escapeHtml(placeTitle(state.place))}</h1>
-            ${state.place.unnamed ? `<p class="region">Your location</p>` : state.place.region ? `<p class="region">${escapeHtml(state.place.region)}</p>` : ""}
-            <p class="temp" aria-label="${escapeHtml(formatTempSpoken(degreesOf(current.temperature), state.unit))}">${temp}</p>
-            ${extremes}
-            ${feelsLine ? `<p class="feels">${escapeHtml(feelsLine)}</p>` : ""}
+          <p class="eyebrow">${escapeHtml(formatLongDate(new Date(), zone))} <span class="zone">· ${escapeHtml(zoneOffsetLabel(new Date(), zone))}</span></p>
+          <p class="condition">${escapeHtml(condition)}</p>
+          <div class="hero-mid">
+            <div class="hero-readout">
+              <h1 id="place-name">${escapeHtml(placeTitle(state.place))}</h1>
+              ${state.place.unnamed ? `<p class="region">Your location</p>` : state.place.region ? `<p class="region">${escapeHtml(state.place.region)}</p>` : ""}
+              <p class="temp" aria-label="${escapeHtml(formatTempSpoken(degreesOf(current.temperature), state.unit))}">${temp}</p>
+              ${extremes}
+            </div>
+            <div class="hero-icon-slot">
+              ${iconImg(current.weatherCondition, current.isDaytime !== false, "hero-icon", { animated: true })}
+            </div>
           </div>
-          <div class="hero-side">
-            ${iconImg(current.weatherCondition, current.isDaytime !== false, "hero-icon", { animated: true })}
-            <p class="condition">${escapeHtml(condition)}</p>
+          <div class="hero-foot">
+            ${feelsLine ? `<p class="feels">${escapeHtml(feelsLine)}</p>` : `<span></span>`}
             ${todayHtml(days[0], zone)}
           </div>
         </div>
