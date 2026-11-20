@@ -467,13 +467,22 @@ button.location-chip[aria-expanded="true"] { background: var(--surface); }
 }
 .hero-readout { min-width: 0; flex: 1; }
 .hero-icon-slot {
-  flex: 0 0 128px;
-  width: 128px;
+  flex: 0 0 auto;
+  width: min(46%, 190px);
+  min-width: 124px;
+  align-self: stretch;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
-.hero-icon { width: 100%; height: 100%; object-fit: contain; }
+.hero-icon {
+  width: 176%;
+  height: 176%;
+  max-width: none;
+  object-fit: contain;
+  pointer-events: none;
+}
 .hero-foot {
   grid-column: 1 / -1;
   display: flex;
@@ -514,7 +523,8 @@ button.location-chip[aria-expanded="true"] { background: var(--surface); }
 }
 .feels { color: var(--muted); font-size: 0.88rem; font-weight: var(--w-regular); margin-top: 2px; }
 @media (max-width: 430px) {
-  .hero-icon-slot { flex-basis: 92px; width: 92px; }
+  .hero-icon-slot { width: min(44%, 150px); min-width: 112px; }
+  .hero-icon { width: 188%; height: 188%; }
   .condition { max-width: 5.6rem; font-size: 0.75rem; }
   .hl { gap: 6px 10px; }
   .hl strong { font-size: 1.35rem; }
