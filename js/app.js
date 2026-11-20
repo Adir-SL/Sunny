@@ -420,10 +420,13 @@ function layoutHtml() {
   const feels = formatTemp(degreesOf(current.feelsLikeTemperature), state.unit);
   const high = formatTemp(degreesOf(days[0]?.maxTemperature), state.unit);
   const low = formatTemp(degreesOf(days[0]?.minTemperature), state.unit);
-  const summary = [
-    condition,
-    feels === "—" ? "" : `Feels like ${feels}`,
-  ].filter(Boolean).join(" · ");
+  const feelsLine = feels === "—" ? "" : `Feels like ${feels}`;
+  const highSpoken = formatTempSpoken(degreesOf(days[0]?.maxTemperature), state.unit);
+  const lowSpoken = formatTempSpoken(degreesOf(days[0]?.minTemperature), state.unit);
+  const extremes = high === "—" && low === "—" ? "" : `<div class="hl" role="group" aria-label="High ${escapeHtml(highSpoken)}, low ${escapeHtml(lowSpoken)}">
+            <p><span class="hl-k">High</span> <strong>${high}</strong></p>
+            <p><span class="hl-k">Low</span> <strong>${low}</strong></p>
+          </div>`;
 
   const blocks = {
     current: () => `<section class="hero" aria-labelledby="place-name">
@@ -434,9 +437,13 @@ function layoutHtml() {
         <div class="hero-main">
           <div class="hero-readout">
             <p class="temp" aria-label="${escapeHtml(formatTempSpoken(degreesOf(current.temperature), state.unit))}">${temp}</p>
-            <p class="summary">${escapeHtml(summary)}</p>
+            <div class="condition-row">
+              <p class="condition">${escapeHtml(condition)}</p>
+              ${extremes}
+            </div>
+            ${feelsLine ? `<p class="feels">${escapeHtml(feelsLine)}</p>` : ""}
           </div>
-          ${todayHtml(days[0], zone, high, low)}
+          ${todayHtml(days[0], zone)}
         </div>
         <dl class="stats">
           ${stat("Humidity", current.relativeHumidity != null ? `${current.relativeHumidity}%` : "—")}
@@ -510,24 +517,13 @@ function sunGlyph(kind) {
   return `<svg class="sun-mini" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><title>${label}</title><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="${path}"/></svg>`;
 }
 
-/** Today's high/low beside sunrise/sunset, as a two-row stack. */
-function todayHtml(day, zone, high, low) {
+function todayHtml(day, zone) {
   const sun = day?.sunEvents;
-  const hasTemps = high !== "—" || low !== "—";
-  const hasSun = Boolean(sun?.sunriseTime || sun?.sunsetTime);
-  if (!hasTemps && !hasSun) return "";
-  const rise = sun?.sunriseTime ? formatClock(new Date(sun.sunriseTime), zone) : "—";
-  const set = sun?.sunsetTime ? formatClock(new Date(sun.sunsetTime), zone) : "—";
-  const temp = (label, spoken, value) => hasTemps
-    ? `<p class="hl"><span class="hl-label" aria-hidden="true">${label}</span><span class="sr-only">${spoken}</span><strong>${escapeHtml(value)}</strong></p>`
-    : "";
-  const sunLine = (kind, value) => hasSun
-    ? `<p>${sunGlyph(kind)}<strong>${escapeHtml(value)}</strong><span class="sr-only">${kind === "rise" ? "sunrise" : "sunset"}</span></p>`
-    : "";
-  return `<div class="sun-stack${hasTemps && hasSun ? " is-paired" : ""}">
-    ${temp("H", "high", high)}${sunLine("rise", rise)}
-    ${temp("L", "low", low)}${sunLine("set", set)}
-  </div>`;
+  if (!sun?.sunriseTime && !sun?.sunsetTime) return "";
+  const rise = sun.sunriseTime ? formatClock(new Date(sun.sunriseTime), zone) : "—";
+  const set = sun.sunsetTime ? formatClock(new Date(sun.sunsetTime), zone) : "—";
+  const sunLine = (kind, value) => `<p>${sunGlyph(kind)}<strong>${escapeHtml(value)}</strong><span class="sr-only">${kind === "rise" ? "sunrise" : "sunset"}</span></p>`;
+  return `<div class="sun-stack">${sunLine("rise", rise)}${sunLine("set", set)}</div>`;
 }
 
 function rainHtml(hours) {
