@@ -1,4 +1,4 @@
-const CACHE = "sunny-v15";
+const CACHE = "sunny-v16";
 const ASSETS = [
   "./",
   "./index.html",

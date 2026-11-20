@@ -440,8 +440,7 @@ button.location-chip[aria-expanded="true"] { background: var(--surface); }
   box-shadow: var(--shadow);
 }
 .hero, .panel, .rain { padding: 18px; }
-.hero { padding: 12px 14px 10px; position: relative; }
-.hero .eyebrow, .hero h1, .hero .region { padding-right: 96px; }
+.hero { padding: 12px 14px 10px; }
 .hero-top, .panel-head, .sun-row, .updated, .day-row, .details div, .favorite-list li {
   display: flex;
   justify-content: space-between;
@@ -453,11 +452,17 @@ button.location-chip[aria-expanded="true"] { background: var(--surface); }
 .hero .zone { opacity: 0.5; }
 .hero h1 { font-size: 1.5rem; line-height: 1.15; letter-spacing: -0.025em; }
 .hero .region { font-size: 0.85rem; font-weight: var(--w-regular); margin-top: 1px; }
-.hero-main { display: flex; align-items: center; gap: 10px; margin: 6px 0 8px; }
-.hero-icon { position: absolute; top: -6px; right: -4px; width: 116px; height: 116px; pointer-events: none; }
-/* Without a region line, push the readout down so the sunrise times clear the icon. */
-.hero h1 + .hero-main { margin-top: 22px; }
+.hero-body { display: flex; align-items: flex-start; gap: 8px; }
 .hero-readout { min-width: 0; flex: 1; }
+.hero-side {
+  flex: 0 0 104px;
+  width: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.hero-icon { width: 84px; height: 84px; }
 .temp {
   font-size: clamp(3.2rem, 15vw, 4.2rem);
   font-weight: var(--w-thin);
@@ -465,15 +470,14 @@ button.location-chip[aria-expanded="true"] { background: var(--surface); }
   letter-spacing: -0.045em;
   margin-left: -0.04em;
 }
-.condition-row {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 2px 16px;
-  margin-top: 2px;
+.condition {
+  margin-top: -2px;
+  max-width: 100%;
+  font-size: 0.84rem;
+  font-weight: var(--w-medium);
+  line-height: 1.15;
 }
-.condition { font-size: 1.02rem; font-weight: var(--w-medium); line-height: 1.2; }
-.hl { display: flex; align-items: baseline; gap: 14px; }
+.hl { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 14px; margin-top: 2px; }
 .hl p { display: flex; align-items: baseline; gap: 5px; }
 .hl-k {
   color: var(--muted);
@@ -490,11 +494,13 @@ button.location-chip[aria-expanded="true"] { background: var(--surface); }
 }
 .feels { color: var(--muted); font-size: 0.88rem; font-weight: var(--w-regular); margin-top: 2px; }
 @media (max-width: 430px) {
-  .condition-row { gap: 2px 12px; }
-  .hl { gap: 10px; }
-  .hl strong { font-size: 1.4rem; }
+  .hero-side { flex-basis: 84px; width: 84px; }
+  .hero-icon { width: 68px; height: 68px; }
+  .condition { font-size: 0.78rem; }
+  .hl { gap: 6px 10px; }
+  .hl strong { font-size: 1.35rem; }
 }
-.sun-stack { display: grid; gap: 2px; margin-left: auto; flex: 0 0 auto; align-self: flex-end; font-size: 0.82rem; }
+.sun-stack { display: grid; gap: 2px; margin-top: 8px; justify-items: center; font-size: 0.82rem; }
 .sun-stack p { display: flex; align-items: center; gap: 5px; color: var(--muted); }
 .sun-stack strong { color: var(--ink); font-weight: var(--w-medium); }
 .sun-stack.is-paired { grid-template-columns: auto auto; column-gap: 14px; }
