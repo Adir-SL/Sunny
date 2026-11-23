@@ -4,8 +4,8 @@ import { escapeHtml, formatHourLabel, speedNumber, tempNumber } from "./format.j
 
 export function renderChart({ hours, mode, unit, selectedIndex }) {
   const width = 720;
-  const height = 196;
-  const pad = { l: 44, r: 12, t: 16, b: 28 };
+  const height = 204;
+  const pad = { l: 44, r: 12, t: 16, b: 36 };
   const innerW = width - pad.l - pad.r;
   const innerH = height - pad.t - pad.b;
   const count = Math.max(hours.length, 2);
@@ -70,8 +70,10 @@ export function renderChart({ hours, mode, unit, selectedIndex }) {
   }
 
   const labels = hours.map((hour, index) => {
-    if (index % 3 !== 0 && index !== hours.length - 1) return "";
-    return `<text class="tick x" x="${xAt(index).toFixed(1)}" y="${height - 8}" text-anchor="middle">${escapeHtml(formatHourLabel(hour))}</text>`;
+    // Every third hour; on narrow screens CSS hides the in-between ones ("minor") so labels never touch.
+    if (index % 3 !== 0) return "";
+    const minor = index % 6 === 3 ? " minor" : "";
+    return `<text class="tick x${minor}" x="${xAt(index).toFixed(1)}" y="${height - 6}" text-anchor="middle">${escapeHtml(formatHourLabel(hour))}</text>`;
   }).join("");
 
   const selectedX = xAt(Math.min(selectedIndex, hours.length - 1));

@@ -1,4 +1,4 @@
-const CACHE = "sunny-v22";
+const CACHE = "sunny-v23";
 const ASSETS = [
   "./",
   "./index.html",
@@ -14,6 +14,9 @@ const ASSETS = [
   "./manifest.webmanifest",
   "./sunny.png",
   "./sunny-dark.png",
+  "./fonts/dongle-300.woff2",
+  "./fonts/dongle-400.woff2",
+  "./fonts/dongle-700.woff2",
   "./config.public.json",
 ];
 
