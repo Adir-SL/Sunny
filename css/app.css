@@ -13,13 +13,13 @@
   --danger: #9f1239;
   --shadow: 0 16px 40px rgba(72, 46, 12, 0.08);
   --radius: 20px;
-  --font: "Outfit", -apple-system, BlinkMacSystemFont, system-ui, "Helvetica Neue", Arial, sans-serif;
-  /* Type weights: thin display numerals, light body, medium labels, semibold headings. */
-  --w-thin: 200;
+  --font: "Dongle", -apple-system, BlinkMacSystemFont, system-ui, "Helvetica Neue", Arial, sans-serif;
+  /* Type weights: Dongle ships only 300, 400 and 700, so the five roles map onto those three. */
+  --w-thin: 300;
   --w-light: 300;
   --w-regular: 400;
-  --w-medium: 500;
-  --w-semibold: 600;
+  --w-medium: 400;
+  --w-semibold: 700;
   --focus: #0f5f5a;
   --bar: #7ea4cc;
   --bar-wet: #1d4e89;
