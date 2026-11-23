@@ -309,8 +309,8 @@ button.location-chip[aria-expanded="true"] { background: var(--surface); }
   border: 1px solid var(--line);
   background: var(--surface);
   border-radius: 999px;
-  min-height: 32px;
-  padding: 0 14px;
+  min-height: 28px;
+  padding: 3px 14px 0;
   font-weight: var(--w-medium);
 }
 .btn-save[aria-pressed="true"] { background: var(--accent-soft); border-color: transparent; }
