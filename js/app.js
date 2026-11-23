@@ -451,9 +451,9 @@ function layoutHtml() {
         </div>
         <dl class="stats">
           ${stat("Humidity", current.relativeHumidity != null ? `${current.relativeHumidity}%` : "—")}
-          ${stat("Wind", windLabel(current.wind))}
-          ${stat("UV", uvLabel(current.uvIndex))}
-          ${stat("Precipitation", popLabel(current.precipitation))}
+          ${statParts("Wind", windParts(current.wind))}
+          ${statParts("UV", uvParts(current.uvIndex))}
+          ${stat("Precipitation", popLabel(current.precipitation), { short: "Precip" })}
         </dl>
       </section>`,
     rain: () => rainHtml(rainy),
@@ -485,8 +485,15 @@ function layoutHtml() {
   return `<div class="cards">${cards || `<p class="muted">All cards are hidden. Open settings to show one.</p>`}</div>`;
 }
 
-function stat(label, value) {
-  return `<div class="stat"><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`;
+/** A stat tile. `short` is the label shown on narrow screens; `sub` is a qualifier (direction, category) that drops to its own line there. */
+function stat(label, value, { short, sub } = {}) {
+  const term = short ? `<span class="stat-short" aria-hidden="true">${short}</span><span class="stat-long">${label}</span>` : label;
+  const qualifier = sub ? ` <span class="stat-sub">${escapeHtml(sub)}</span>` : "";
+  return `<div class="stat"><dt>${term}</dt><dd>${escapeHtml(value)}${qualifier}</dd></div>`;
+}
+
+function statParts(label, [value, sub]) {
+  return stat(label, value, { sub });
 }
 
 function tab(id, label, spoken = label) {
@@ -494,17 +501,20 @@ function tab(id, label, spoken = label) {
   return `<button type="button" class="tab" role="tab" data-chart-tab="${id}" aria-selected="${selected ? "true" : "false"}" aria-label="${escapeHtml(spoken)}">${escapeHtml(label)}</button>`;
 }
 
-function windLabel(wind) {
-  if (!wind?.speed) return "—";
-  const speed = formatSpeed(wind.speed.value, state.unit);
-  const dir = cardinalLabel(wind.direction?.cardinal);
-  return dir ? `${speed} ${dir}` : speed;
+function windParts(wind) {
+  if (!wind?.speed) return ["—", ""];
+  // "14 km/h" + "NW" → ["14", "km/h NW"], so the unit and direction share the second line on phones.
+  const [number, ...unit] = formatSpeed(wind.speed.value, state.unit).split(" ");
+  return [number, [...unit, cardinalLabel(wind.direction?.cardinal)].filter(Boolean).join(" ")];
 }
 
-function uvLabel(index) {
-  if (index == null || index === "") return "—";
-  const category = uvCategory(index);
-  return category ? `${index} ${category}` : String(index);
+function windLabel(wind) {
+  return windParts(wind).filter(Boolean).join(" ");
+}
+
+function uvParts(index) {
+  if (index == null || index === "") return ["—", ""];
+  return [String(index), uvCategory(index) || ""];
 }
 
 function popLabel(precipitation) {
