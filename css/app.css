@@ -66,6 +66,8 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: var(--font);
+  /* Dongle draws small glyphs (x-height 0.28em). Match Outfit's 0.475em so sizes read as designed. */
+  font-size-adjust: 0.475;
   font-weight: var(--w-light);
   font-variant-numeric: tabular-nums;
   color: var(--ink);
