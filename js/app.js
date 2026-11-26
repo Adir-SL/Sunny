@@ -15,6 +15,7 @@ import {
   formatLongDate,
   formatSpeed,
   formatTemp,
+  formatTempChange,
   formatTempSpoken,
   placeKey,
   precipPercent,
@@ -421,6 +422,7 @@ function layoutHtml() {
   const high = formatTemp(degreesOf(days[0]?.maxTemperature), state.unit);
   const low = formatTemp(degreesOf(days[0]?.minTemperature), state.unit);
   const feelsLine = feels === "—" ? "" : `Feels like ${feels}`;
+  const changeLine = formatTempChange(degreesOf(current.currentConditionsHistory?.temperatureChange), state.unit);
   const highSpoken = formatTempSpoken(degreesOf(days[0]?.maxTemperature), state.unit);
   const lowSpoken = formatTempSpoken(degreesOf(days[0]?.minTemperature), state.unit);
   const extremes = high === "—" && low === "—" ? "" : `<div class="hl" role="group" aria-label="High ${escapeHtml(highSpoken)}, low ${escapeHtml(lowSpoken)}">
@@ -445,7 +447,10 @@ function layoutHtml() {
             </div>
           </div>
           <div class="hero-foot">
-            ${feelsLine ? `<p class="feels">${escapeHtml(feelsLine)}</p>` : `<span></span>`}
+            ${feelsLine || changeLine ? `<div class="hero-notes">
+              ${feelsLine ? `<p class="feels">${escapeHtml(feelsLine)}</p>` : ""}
+              ${changeLine ? `<p class="feels vs-yesterday">${escapeHtml(changeLine)}</p>` : ""}
+            </div>` : `<span></span>`}
             ${todayHtml(days[0], zone)}
           </div>
         </div>

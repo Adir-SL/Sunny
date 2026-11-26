@@ -113,6 +113,16 @@ export function formatTemp(celsius, unit) {
   return `${rounded === 0 ? 0 : rounded}°`;
 }
 
+/** Describe a 24-hour temperature change (in °C) as "2° hotter than yesterday". */
+export function formatTempChange(deltaCelsius, unit) {
+  if (deltaCelsius == null || deltaCelsius === "") return "";
+  const value = Number(deltaCelsius);
+  if (!Number.isFinite(value)) return "";
+  const rounded = Math.round(unit === "f" ? value * 1.8 : value);
+  if (rounded === 0) return "Same as yesterday";
+  return `${Math.abs(rounded)}° ${rounded > 0 ? "hotter" : "cooler"} than yesterday`;
+}
+
 export function formatTempSpoken(celsius, unit) {
   const shown = formatTemp(celsius, unit);
   if (shown === "—") return "unavailable";
