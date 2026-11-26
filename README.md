@@ -93,6 +93,7 @@ Live requests, all metric (the °F view is converted in the browser):
 | --- | --- |
 | Current conditions | `GET https://weather.googleapis.com/v1/currentConditions:lookup` |
 | Hourly forecast | `GET https://weather.googleapis.com/v1/forecast/hours:lookup` |
+| Hourly history (vs. yesterday) | `GET https://weather.googleapis.com/v1/history/hours:lookup` |
 | Daily forecast | `GET https://weather.googleapis.com/v1/forecast/days:lookup` |
 | Alerts | `GET https://weather.googleapis.com/v1/publicAlerts:lookup` |
 | City search | `POST https://places.googleapis.com/v1/places:autocomplete` |

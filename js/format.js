@@ -114,13 +114,24 @@ export function formatTemp(celsius, unit) {
 }
 
 /** Describe a 24-hour temperature change (in °C) as "2° hotter than yesterday". */
-export function formatTempChange(deltaCelsius, unit) {
+export function formatTempChange(deltaCelsius, unit, than = "yesterday") {
   if (deltaCelsius == null || deltaCelsius === "") return "";
   const value = Number(deltaCelsius);
   if (!Number.isFinite(value)) return "";
   const rounded = Math.round(unit === "f" ? value * 1.8 : value);
-  if (rounded === 0) return "Same temperature as yesterday";
-  return `${Math.abs(rounded)}° ${rounded > 0 ? "hotter" : "cooler"} than yesterday`;
+  if (rounded === 0) return `Same temperature as ${than}`;
+  return `${Math.abs(rounded)}° ${rounded > 0 ? "hotter" : "cooler"} than ${than}`;
+}
+
+/** Find the history hour that starts 24 hours before the given forecast hour. */
+export function hourDayBefore(hour, historyHours) {
+  const start = Date.parse(hour?.interval?.startTime);
+  if (!Number.isFinite(start) || !Array.isArray(historyHours)) return null;
+  const target = start - 24 * 3600 * 1000;
+  return historyHours.find((item) => {
+    const time = Date.parse(item?.interval?.startTime);
+    return Number.isFinite(time) && Math.abs(time - target) < 30 * 60 * 1000;
+  }) || null;
 }
 
 export function formatTempSpoken(celsius, unit) {

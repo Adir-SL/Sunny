@@ -1,6 +1,6 @@
 /**
  * Google Maps Platform calls used by Sunny:
- * - Weather API: current conditions, hourly forecast, daily forecast, public alerts
+ * - Weather API: current conditions, hourly forecast, hourly history, daily forecast, public alerts
  * - Places API (New): city autocomplete and place details
  * - Places API (New) Nearby Search: name the device location
  * - Geocoding API: fallback when Nearby Search finds no locality
@@ -100,6 +100,25 @@ async function fetchAllHours(place, settings, signal) {
   return { forecastHours: hours, timeZone };
 }
 
+async function fetchHistoryHours(place, settings, signal) {
+  const hours = [];
+  let pageToken = "";
+  for (let page = 0; page < 3; page += 1) {
+    const params = {
+      "location.latitude": String(place.lat),
+      "location.longitude": String(place.lng),
+      hours: "24",
+      pageSize: "24",
+    };
+    if (pageToken) params.pageToken = pageToken;
+    const body = await weatherGet("history/hours:lookup", params, settings, signal);
+    hours.push(...(body.historyHours || []));
+    if (!body.nextPageToken || hours.length >= 24) break;
+    pageToken = body.nextPageToken;
+  }
+  return { historyHours: hours };
+}
+
 async function fetchAllDays(place, settings, signal) {
   const days = [];
   let pageToken = "";
@@ -130,9 +149,14 @@ export async function fetchWeather(place, settings, signal) {
     "location.latitude": String(place.lat),
     "location.longitude": String(place.lng),
   };
-  const [current, hours, days, alertsResult] = await Promise.all([
+  const [current, hours, history, days, alertsResult] = await Promise.all([
     weatherGet("currentConditions:lookup", loc, settings, signal),
     fetchAllHours(place, settings, signal),
+    // History only feeds the "vs yesterday" line, so a failure must not block the forecast.
+    fetchHistoryHours(place, settings, signal).catch((error) => {
+      if (error?.name === "AbortError") throw error;
+      return { historyHours: [] };
+    }),
     fetchAllDays(place, settings, signal),
     weatherGet("publicAlerts:lookup", loc, settings, signal, { units: false }).then(
       (alerts) => ({ alerts, alertsError: null }),
@@ -142,6 +166,7 @@ export async function fetchWeather(place, settings, signal) {
   return {
     current,
     hours,
+    history,
     days,
     alerts: alertsResult.alerts,
     alertsError: alertsResult.alertsError,

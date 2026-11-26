@@ -131,6 +131,18 @@ export function buildMockResponses(place, now = new Date()) {
     });
   }
 
+  const historyHours = [];
+  for (let index = 1; index <= 24; index += 1) {
+    const instant = new Date(now.getTime() - index * 3600 * 1000);
+    instant.setUTCMinutes(0, 0, 0);
+    const local = civilParts(instant, timeZone);
+    historyHours.push({
+      interval: { startTime: instant.toISOString(), endTime: new Date(instant.getTime() + 3600 * 1000).toISOString() },
+      displayDateTime: { year: local.year, month: local.month, day: local.day, hours: local.hour, minutes: 0, seconds: 0 },
+      temperature: temperature(diurnalTemp(local.hour, latitudeBias) + (local.hour >= 12 ? 1.8 : 0.6)),
+    });
+  }
+
   const currentHour = forecastHours[0];
   const todayKey = `${here.year}-${here.month}-${here.day}`;
   const todayHours = forecastHours.filter((hour) => {
@@ -236,6 +248,7 @@ export function buildMockResponses(place, now = new Date()) {
   return {
     current,
     hours: { forecastHours, timeZone: zone },
+    history: { historyHours },
     days: { forecastDays, timeZone: zone },
     alerts,
     alertsError: null,

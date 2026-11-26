@@ -16,6 +16,7 @@ import {
   formatSpeed,
   formatTemp,
   formatTempChange,
+  hourDayBefore,
   formatTempSpoken,
   placeKey,
   precipPercent,
@@ -422,7 +423,9 @@ function layoutHtml() {
   const high = formatTemp(degreesOf(days[0]?.maxTemperature), state.unit);
   const low = formatTemp(degreesOf(days[0]?.minTemperature), state.unit);
   const feelsLine = feels === "—" ? "" : `Feels like ${feels}`;
-  const changeLine = formatTempChange(degreesOf(current.currentConditionsHistory?.temperatureChange), state.unit);
+  const changeLine = state.selectedHour > 0
+    ? hourChangeLine(selected, bundle.history?.historyHours, zone)
+    : formatTempChange(degreesOf(current.currentConditionsHistory?.temperatureChange), state.unit);
   const highSpoken = formatTempSpoken(degreesOf(days[0]?.maxTemperature), state.unit);
   const lowSpoken = formatTempSpoken(degreesOf(days[0]?.minTemperature), state.unit);
   const extremes = high === "—" && low === "—" ? "" : `<div class="hl" role="group" aria-label="High ${escapeHtml(highSpoken)}, low ${escapeHtml(lowSpoken)}">
@@ -600,6 +603,17 @@ function detailsHtml(current) {
     ["Thunderstorm", current.thunderstormProbability != null ? `${current.thunderstormProbability}%` : "—"],
   ];
   return `<section class="panel details"><h2>Details</h2><dl>${rows.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl><p class="source">Conditions and forecast from Google Weather.</p></section>`;
+}
+
+/** "13:00 · 2° hotter than yesterday" for a picked hour, compared with 24 hours earlier. */
+function hourChangeLine(hour, historyHours, zone) {
+  const now = degreesOf(hour?.temperature);
+  const before = degreesOf(hourDayBefore(hour, historyHours)?.temperature);
+  if (now == null || before == null) return "";
+  const d = hour.displayDateTime;
+  const isToday = d && dateKey(d.year, d.month, d.day) === dateKeyInZone(new Date(), zone);
+  const label = `${isToday ? "" : "Tomorrow "}${formatHourLabel(hour)}`;
+  return `${label} · ${formatTempChange(now - before, state.unit, isToday ? "yesterday" : "today")}`;
 }
 
 function railItem(hour, index) {

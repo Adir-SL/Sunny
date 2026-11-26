@@ -6,6 +6,7 @@ import {
   dateKeyInZone,
   formatTemp,
   formatTempChange,
+  hourDayBefore,
   rainyHours,
   weekdayFromCivil,
   zonedTimeToUtc,
@@ -169,4 +170,14 @@ test("temperature change reads against yesterday", () => {
   assert.equal(formatTempChange(0.3, "c"), "Same temperature as yesterday");
   assert.equal(formatTempChange(-0.6, "f"), "1° cooler than yesterday");
   assert.equal(formatTempChange(null, "c"), "");
+});
+
+test("a forecast hour matches the history hour 24 hours earlier", () => {
+  const bundle = buildMockResponses(DEFAULT_PLACE);
+  const hour = bundle.hours.forecastHours[5];
+  const before = hourDayBefore(hour, bundle.history.historyHours);
+  assert.ok(before);
+  assert.equal(Date.parse(hour.interval.startTime) - Date.parse(before.interval.startTime), 24 * 3600 * 1000);
+  assert.equal(hourDayBefore(bundle.hours.forecastHours[30], bundle.history.historyHours), null);
+  assert.equal(formatTempChange(1, "c", "today"), "1° hotter than today");
 });
