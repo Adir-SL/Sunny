@@ -119,7 +119,7 @@ export function formatTempChange(deltaCelsius, unit) {
   const value = Number(deltaCelsius);
   if (!Number.isFinite(value)) return "";
   const rounded = Math.round(unit === "f" ? value * 1.8 : value);
-  if (rounded === 0) return "Same as yesterday";
+  if (rounded === 0) return "Same temperature as yesterday";
   return `${Math.abs(rounded)}° ${rounded > 0 ? "hotter" : "cooler"} than yesterday`;
 }
 

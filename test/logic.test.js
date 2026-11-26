@@ -166,7 +166,7 @@ test("hourly chart renders three modes", () => {
 test("temperature change reads against yesterday", () => {
   assert.equal(formatTempChange(1.2, "c"), "1° hotter than yesterday");
   assert.equal(formatTempChange(-2.4, "c"), "2° cooler than yesterday");
-  assert.equal(formatTempChange(0.3, "c"), "Same as yesterday");
+  assert.equal(formatTempChange(0.3, "c"), "Same temperature as yesterday");
   assert.equal(formatTempChange(-0.6, "f"), "1° cooler than yesterday");
   assert.equal(formatTempChange(null, "c"), "");
 });
